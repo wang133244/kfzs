@@ -59,13 +59,14 @@ class SafeEmbeddingFunction:
     """Try ONNX MiniLM first, then fall back to an offline hash embedding."""
 
     def __init__(self) -> None:
-        # 优先使用 chromadb 自带 ONNXMiniLM_L6_V2，加载失败时使用哈希回退
+        # 默认不用 ONNXMiniLM：首次构造会下载约 80MB 模型，云托管健康检查会因此失败
         self._onnx = None
         self._hash = HashEmbeddingFunction()
-        try:
-            self._onnx = embedding_functions.ONNXMiniLM_L6_V2()
-        except Exception:
-            self._onnx = None
+        if os.getenv("CHROMA_DOWNLOAD_ONNX") == "1":
+            try:
+                self._onnx = embedding_functions.ONNXMiniLM_L6_V2()
+            except Exception:
+                self._onnx = None
 
     # 优先用 ONNX 向量化，失败即回退哈希，避免单点故障中断检索
     def __call__(self, input: list[str]) -> list[list[float]]:

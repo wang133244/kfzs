@@ -4,7 +4,7 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PORT=80
+ENV PORT=8000
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libgomp1 \
@@ -15,6 +15,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/app ./app
 
-EXPOSE 80
+EXPOSE 8000
 
 CMD ["python", "-m", "app.run"]

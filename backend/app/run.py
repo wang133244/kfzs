@@ -1,11 +1,11 @@
-# 云托管会注入 PORT；未注入时默认 80，与控制台默认监听端口一致
+# 云托管会注入 PORT；控制台当前探测 8000，未注入时也听 8000
 import os
 
 import uvicorn
 
 
 def main() -> None:
-    port = int(os.getenv("PORT", "80"))
+    port = int(os.getenv("PORT", "8000"))
     uvicorn.run("app.main:app", host="0.0.0.0", port=port)
 
 

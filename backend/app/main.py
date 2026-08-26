@@ -1,5 +1,3 @@
-import asyncio
-import logging
 from contextlib import asynccontextmanager
 
 from pathlib import Path
@@ -15,33 +13,12 @@ from .api import human_chat, product_admin
 from .config import settings
 from .seed import init_db
 
-logger = logging.getLogger(__name__)
-
-
-async def _warm_rag() -> None:
-    # 知识库重建放到后台，避免云托管健康检查在端口尚未监听时判定失败
-    try:
-        from .rag.store import get_collection
-        from .core.ingestion import ingestion_service
-
-        get_collection(rebuild=True)
-        for doc in await ingestion_service.list_documents():
-            if doc["status"] == "ready":
-                await ingestion_service.reindex_document(doc["document_id"])
-    except Exception:
-        logger.exception("RAG warmup failed")
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 只做建表，知识库延后到首次检索；避免云托管探测端口时被模型下载堵住
     await init_db()
-    warmup = asyncio.create_task(_warm_rag())
     yield
-    warmup.cancel()
-    try:
-        await warmup
-    except (asyncio.CancelledError, Exception):
-        logger.debug("RAG warmup stopped", exc_info=True)
 
 
 app = FastAPI(title=settings.app_name, version="1.0.0", lifespan=lifespan)
