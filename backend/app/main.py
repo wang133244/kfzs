@@ -1,3 +1,5 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from pathlib import Path
@@ -13,21 +15,33 @@ from .api import human_chat, product_admin
 from .config import settings
 from .seed import init_db
 
+logger = logging.getLogger(__name__)
+
+
+async def _warm_rag() -> None:
+    # 知识库重建放到后台，避免云托管健康检查在端口尚未监听时判定失败
+    try:
+        from .rag.store import get_collection
+        from .core.ingestion import ingestion_service
+
+        get_collection(rebuild=True)
+        for doc in await ingestion_service.list_documents():
+            if doc["status"] == "ready":
+                await ingestion_service.reindex_document(doc["document_id"])
+    except Exception:
+        logger.exception("RAG warmup failed")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动时初始化数据库与 RAG 知识库，确保首次请求即可使用
     await init_db()
-    from .rag.store import get_collection
-    from .core.ingestion import ingestion_service
-
-    # 每次启动重建内置知识库，保证 Markdown 更新后无需手动清理向量库
-    get_collection(rebuild=True)
-    # 重新索引已就绪的 PDF 文档到 RAG
-    for doc in await ingestion_service.list_documents():
-        if doc["status"] == "ready":
-            await ingestion_service.reindex_document(doc["document_id"])
+    warmup = asyncio.create_task(_warm_rag())
     yield
+    warmup.cancel()
+    try:
+        await warmup
+    except (asyncio.CancelledError, Exception):
+        logger.debug("RAG warmup stopped", exc_info=True)
 
 
 app = FastAPI(title=settings.app_name, version="1.0.0", lifespan=lifespan)
@@ -60,9 +74,10 @@ _UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=_UPLOAD_ROOT), name="uploads")
 
 
+@app.get("/")
 @app.get("/api/v1/healthz")
 async def healthz() -> dict:
-    # 健康检查
+    # 云托管默认探测根路径；/api/v1/healthz 供业务侧检查
     return {"status": "ok"}
 
 
