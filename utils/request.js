@@ -37,7 +37,7 @@ function request(path, options) {
         resolve(res.data)
       },
       fail() {
-        reject(new Error('无法连接服务器，请确认电脑上后端已在 8000 端口运行，并在开发者工具关闭域名校验'))
+        reject(new Error('无法连接云端客服，请检查网络或在开发者工具关闭域名校验'))
       }
     })
   })
@@ -160,7 +160,7 @@ function uploadAvatar(filePath) {
         }
       },
       fail() {
-        reject(new Error('无法连接服务器，请确认电脑上后端已在 8000 端口运行'))
+        reject(new Error('无法连接云端客服，请检查网络'))
       }
     })
   })

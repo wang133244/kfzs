@@ -37,4 +37,6 @@ conda run -n langchain python -m uvicorn app.main:app --reload --host 127.0.0.1 
 - 个人中心：头像 / 用户名可改、钱包、订单查询
 - 订单号格式为下单时间，例如 `2024.12.3.8.23.12`
 
-接口地址在 `utils/config.js` 的 `BASE_URL`，默认 `http://127.0.0.1:8000`。
+接口地址在 `utils/config.js` 的 `BASE_URL`。小程序默认请求云托管：  
+`https://prod-302921-8-1474916664.sh.run.tcloudbase.com`  
+本地调试后端时把 `USE_CLOUD` 改为 `false`。
