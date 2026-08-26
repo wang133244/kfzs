@@ -1,0 +1,15 @@
+.git
+.cursor
+**/.env
+backend/.env
+backend/chroma_data
+backend/*.db
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+node_modules/
+**/node_modules/
+pages/
+cloudfunctions/
+miniprogram_npm/
+project.private.config.json
