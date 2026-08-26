@@ -5,7 +5,7 @@ from sqlalchemy import delete, select, text
 
 from .config import settings
 from .data.showcase import PRODUCTS
-from .db import async_session_factory, engine
+from .db import async_session_factory, engine, ensure_mysql_database, retry_mysql_connect
 from .models import Base, ChatSession, ConversationSummary, Message, Order, ProductInventory, User, WorkflowState
 from .security import hash_password
 
@@ -170,7 +170,8 @@ async def wipe_chat_history() -> None:
 
 # 初始化总入口：建表并写入种子数据（供应用启动与独立脚本调用）
 async def init_db() -> None:
-    await seed_all()
+    await ensure_mysql_database()
+    await retry_mysql_connect(seed_all)
     # 商品入库与内存同步：补齐种子灯具，并清掉旧占位商品
     from .core.product_service import seed_and_sync_products
     await seed_and_sync_products()

@@ -1,7 +1,9 @@
 from functools import lru_cache
+from urllib.parse import quote_plus
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine.url import make_url
 
 
 class Settings(BaseSettings):
@@ -16,6 +18,11 @@ class Settings(BaseSettings):
     )
 
     database_url: str = "sqlite+aiosqlite:///./doudian.db"
+    # 云托管 MySQL：配了 MYSQL_ADDRESS 后优先走 MySQL，本机不配则继续用 SQLite
+    mysql_address: str = ""
+    mysql_username: str = ""
+    mysql_password: str = ""
+    mysql_database: str = "doudian"
     redis_url: str = "redis://localhost:6379/0"
     chroma_persist_dir: str = "./chroma_data"
     chroma_url: str = ""
@@ -81,8 +88,26 @@ class Settings(BaseSettings):
         return self
 
     @property
+    def resolved_database_url(self) -> str:
+        # 云托管控制台填 MYSQL_* 即可，密码里的特殊字符会自动编码进连接串
+        if self.mysql_address.strip() and self.mysql_username.strip():
+            user = quote_plus(self.mysql_username)
+            password = quote_plus(self.mysql_password)
+            host = self.mysql_address.strip()
+            db = (self.mysql_database or "doudian").strip() or "doudian"
+            return f"mysql+aiomysql://{user}:{password}@{host}/{db}?charset=utf8mb4"
+        return self.database_url
+
+    @property
     def is_sqlite(self) -> bool:
-        return self.database_url.startswith("sqlite")
+        return self.resolved_database_url.startswith("sqlite")
+
+    @property
+    def mysql_database_name(self) -> str:
+        url = self.resolved_database_url
+        if url.startswith("mysql"):
+            return make_url(url).database or (self.mysql_database or "doudian")
+        return self.mysql_database or "doudian"
 
     @property
     def chroma_is_remote(self) -> bool:

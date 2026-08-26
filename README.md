@@ -45,3 +45,14 @@ conda run -n langchain python -m uvicorn app.main:app --reload --host 127.0.0.1 
 1. 云托管控制台确认服务名是 `prod`，并已发布最新版本。
 2. 微信公众平台 → 设置 → 基本设置 → **基础库最低版本 2.23.0** 以上。
 3. 重新编译 / 上传小程序。无需再配置 request / downloadFile 合法域名。
+
+云上用户、聊天、购物车要持久保存时，给服务 `prod` 增加环境变量（密码只填控制台，不要写进 Git）：
+
+```
+MYSQL_ADDRESS=10.31.107.132:3306
+MYSQL_USERNAME=root
+MYSQL_PASSWORD=开通 MySQL 时设置的密码
+MYSQL_DATABASE=doudian
+```
+
+本机不配这几项，继续用 SQLite。改完环境变量后必须重新发布 `prod`。
