@@ -1,0 +1,72 @@
+<view class="page">
+  <view class="toolbar" style="padding-top: {{statusBarHeight}}px">
+    <view>
+      <view class="toolbar-kicker">XINGTU</view>
+      <text class="toolbar-title">照明客服</text>
+    </view>
+    <view class="toolbar-actions">
+      <text class="link" bindtap="onClear">清空</text>
+      <text class="link" bindtap="onLogout">退出</text>
+    </view>
+  </view>
+
+  <scroll-view class="list" scroll-y scroll-into-view="{{scrollTo}}" scroll-with-animation>
+    <view wx:if="{{!messages.length}}" class="empty">
+      <view class="lamp">灯</view>
+      <text class="empty-title">星途照明客服</text>
+      <text class="empty-hint">可以问问柱头灯、壁灯，或查一下订单</text>
+    </view>
+
+    <view
+      wx:for="{{messages}}"
+      wx:key="id"
+      class="row {{item.role === 'user' ? 'row-user' : 'row-bot'}}"
+    >
+      <view class="avatar {{item.role === 'user' ? '' : 'avatar-bot'}}">{{item.role === 'user' ? '我' : '灯'}}</view>
+      <view class="bubble-wrap">
+        <view class="bubble">{{item.content}}</view>
+        <view wx:if="{{item.product_cards.length}}" class="cards">
+          <view
+            wx:for="{{item.product_cards}}"
+            wx:for-item="card"
+            wx:key="product_id"
+            class="card"
+            data-id="{{card.product_id}}"
+            bindtap="openProduct"
+          >
+            <image wx:if="{{card.cover}}" class="card-cover" src="{{card.cover}}" mode="aspectFill" />
+            <view wx:else class="card-cover card-cover-empty"></view>
+            <view class="card-body">
+              <view class="card-title">{{card.title}}</view>
+              <view class="card-price">¥{{card.price}}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{sending}}" class="row row-bot">
+      <view class="avatar avatar-bot">灯</view>
+      <view class="bubble typing">客服正在回复…</view>
+    </view>
+    <view id="bottom" class="bottom-anchor"></view>
+  </scroll-view>
+
+  <view class="tips" wx:if="{{messages.length <= 1 && !sending}}">
+    <view class="chip" bindtap="onChip" data-text="给我推荐一下">推荐灯具</view>
+    <view class="chip" bindtap="onChip" data-text="给我推荐一个壁灯">户外壁灯</view>
+    <view class="chip" bindtap="onChip" data-text="柱头灯多少钱">柱头灯</view>
+  </view>
+
+  <view class="composer safe-bottom">
+    <input
+      class="input"
+      value="{{draft}}"
+      confirm-type="send"
+      placeholder="问问灯具、订单或售后"
+      bindinput="onDraft"
+      bindconfirm="onSend"
+    />
+    <button class="send" disabled="{{sending || !draft}}" bindtap="onSend">发送</button>
+  </view>
+</view>

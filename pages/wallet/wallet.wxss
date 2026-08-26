@@ -1,0 +1,73 @@
+.page {
+  min-height: 100vh;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.hero {
+  padding: 40rpx 32rpx;
+  border-radius: 28rpx;
+  background: linear-gradient(145deg, #121b33 0%, #1b2a4a 60%, #3d4d73 100%);
+  color: #fffcf7;
+}
+
+.label {
+  font-size: 24rpx;
+  color: #e0c36a;
+}
+
+.money {
+  margin-top: 12rpx;
+  font-size: 64rpx;
+  font-weight: 700;
+}
+
+.hint {
+  margin-top: 16rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: rgba(255, 252, 247, 0.75);
+}
+
+.section-title {
+  margin: 32rpx 8rpx 16rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1b2a4a;
+}
+
+.bill {
+  margin-bottom: 16rpx;
+  padding: 24rpx;
+  background: #fffcf7;
+  border-radius: 20rpx;
+  border: 1rpx solid #e6dfd2;
+}
+
+.bill-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.oid {
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.minus {
+  color: #a16207;
+  font-weight: 700;
+}
+
+.bill-sub {
+  margin-top: 8rpx;
+  color: #a8a29e;
+  font-size: 22rpx;
+}
+
+.empty {
+  padding: 80rpx 0;
+  text-align: center;
+  color: #a8a29e;
+}

@@ -1,0 +1,13 @@
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/chroma_data/
+backend/*.db
+backend/uploads/
+backend/.env
+.env
+cloudfunctions/**/node_modules/
+node_modules/
+.DS_Store
+*.pyc
+

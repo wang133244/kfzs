@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "envId": "cloud1-d5g3o1bt42e26dbb7",
+  "appid": "wx2aa5f2c85393e806",
+  "functionRoot": "./cloudfunctions",
+  "functions": [
+    {
+      "name": "login",
+      "timeout": 10,
+      "runtime": "Nodejs16.13",
+      "handler": "index.main",
+      "installDependency": true
+    }
+  ]
+}

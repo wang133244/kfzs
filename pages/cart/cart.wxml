@@ -1,0 +1,28 @@
+<view class="page">
+  <view wx:if="{{items.length}}">
+    <view wx:for="{{items}}" wx:for-index="idx" wx:key="idx" class="row">
+      <image wx:if="{{item.product.cover}}" class="cover" src="{{item.product.cover}}" mode="aspectFill" />
+      <view wx:else class="cover cover-empty"></view>
+      <view class="info">
+        <view class="name">{{item.product.title}}</view>
+        <view class="price">¥{{item.product.price}} × {{item.quantity}}</view>
+        <view class="ops">
+          <text class="del" data-id="{{item.product.product_id}}" bindtap="remove">删除</text>
+        </view>
+      </view>
+    </view>
+    <view class="footer safe-bottom">
+      <view>
+        <view class="sum">合计 ¥{{total}}</view>
+        <view class="bal">钱包 ¥{{balance}}</view>
+      </view>
+      <button class="pay" loading="{{checking}}" disabled="{{checking}}" bindtap="checkout">结算下单</button>
+    </view>
+  </view>
+
+  <view wx:else class="empty">
+    <view class="empty-icon">灯</view>
+    <view>购物车还是空的</view>
+    <view class="ghost" catchtap="goShop">去逛逛商品</view>
+  </view>
+</view>

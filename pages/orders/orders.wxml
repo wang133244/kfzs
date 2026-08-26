@@ -1,0 +1,21 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="empty">加载中…</view>
+  <view wx:elif="{{orders.length}}">
+    <view wx:for="{{orders}}" wx:key="order_id" class="card">
+      <view class="head">
+        <text class="oid">{{item.order_id}}</text>
+        <text class="status">{{item.statusText}}</text>
+      </view>
+      <view wx:for="{{item.items}}" wx:for-item="line" wx:key="product_id" class="line">
+        <text class="line-title">{{line.title}}</text>
+        <text class="line-qty">x{{line.quantity}}</text>
+      </view>
+      <view wx:if="{{!item.items.length}}" class="line">{{item.product}}</view>
+      <view class="foot">
+        <text class="time">{{item.timeText}}</text>
+        <text class="amount">¥{{item.amountText}}</text>
+      </view>
+    </view>
+  </view>
+  <view wx:else class="empty">暂无订单，去购物车下单后会显示在这里</view>
+</view>

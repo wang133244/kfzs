@@ -1,0 +1,20 @@
+<view class="page">
+  <view class="hero">
+    <view class="label">钱包余额</view>
+    <view class="money">¥{{wallet}}</view>
+    <view class="hint">虚拟钱包，初始 2000 元。购物车下单会扣款并生成订单，不发货。</view>
+  </view>
+
+  <view class="section-title">账单</view>
+  <view wx:if="{{loading}}" class="empty">加载中…</view>
+  <view wx:elif="{{orders.length}}">
+    <view wx:for="{{orders}}" wx:key="order_id" class="bill">
+      <view class="bill-top">
+        <text class="oid">{{item.order_id}}</text>
+        <text class="minus">-¥{{item.amountText}}</text>
+      </view>
+      <view class="bill-sub">{{item.product}} · {{item.statusText}}</view>
+    </view>
+  </view>
+  <view wx:else class="empty">还没有消费记录，去购物车下单试试</view>
+</view>

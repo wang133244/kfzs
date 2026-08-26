@@ -1,0 +1,54 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/chat/chat",
+    "pages/showcase/showcase",
+    "pages/cart/cart",
+    "pages/profile/profile",
+    "pages/wallet/wallet",
+    "pages/orders/orders",
+    "pages/detail/detail",
+    "pages/webview/webview"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#1B2A4A",
+    "navigationBarTitleText": "星途户外照明",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F3EEE4",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#8B8378",
+    "selectedColor": "#C4A35A",
+    "backgroundColor": "#FFFCF7",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/chat/chat",
+        "text": "客服",
+        "iconPath": "assets/tab-chat.png",
+        "selectedIconPath": "assets/tab-chat-active.png"
+      },
+      {
+        "pagePath": "pages/showcase/showcase",
+        "text": "橱窗",
+        "iconPath": "assets/tab-shop.png",
+        "selectedIconPath": "assets/tab-shop-active.png"
+      },
+      {
+        "pagePath": "pages/cart/cart",
+        "text": "购物车",
+        "iconPath": "assets/tab-cart.png",
+        "selectedIconPath": "assets/tab-cart-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "assets/tab-user.png",
+        "selectedIconPath": "assets/tab-user-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

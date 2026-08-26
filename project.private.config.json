@@ -1,0 +1,26 @@
+{
+  "description": "本地开发配置：关闭域名校验以便连接本机后端",
+  "libVersion": "3.17.1",
+  "projectname": "%E6%98%9F%E9%80%94%E5%AE%A2%E6%9C%8D%E5%B0%8F%E7%A8%8B%E5%BA%8F",
+  "setting": {
+    "urlCheck": false,
+    "coverView": true,
+    "lazyloadPlaceholderEnable": false,
+    "skylineRenderEnable": false,
+    "preloadBackgroundData": false,
+    "autoAudits": false,
+    "useApiHook": true,
+    "useApiHostProcess": true,
+    "showShadowRootInInspector": false,
+    "useStaticServer": false,
+    "showShadowRootInWxmlPanel": false,
+    "useLanDebug": false,
+    "showES6CompileOption": false,
+    "compileHotReLoad": true,
+    "checkInvalidKey": true,
+    "ignoreDevUnusedFiles": true,
+    "bigPackageSizeSupport": false,
+    "useIsolateContext": true
+  },
+  "condition": {}
+}

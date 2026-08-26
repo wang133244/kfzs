@@ -1,0 +1,31 @@
+<view class="page">
+  <view class="night">
+    <view class="glow"></view>
+    <view class="logo-wrap">
+      <view class="logo">灯</view>
+    </view>
+    <view class="brand-en">XINGTU LIGHTING</view>
+    <view class="title">星途户外照明</view>
+    <view class="sub">点亮庭院与归途</view>
+  </view>
+
+  <view class="card">
+    <button class="btn wx" loading="{{wxLoading}}" disabled="{{wxLoading || loading}}" bindtap="onWechatLogin">
+      {{wxLoading ? '微信登录中…' : '微信一键登录'}}
+    </button>
+    <view class="split">测试 / 管理员账号</view>
+    <view class="label">用户名</view>
+    <input class="input" value="{{username}}" placeholder="customer 或 admin" bindinput="onUsername" />
+    <view class="label">密码</view>
+    <input class="input" password value="{{password}}" placeholder="请输入密码" bindinput="onPassword" />
+    <view wx:if="{{error}}" class="error">{{error}}</view>
+    <button class="btn" loading="{{loading}}" disabled="{{loading || wxLoading}}" bindtap="onSubmit">
+      {{loading ? '登录中…' : '账号登录'}}
+    </button>
+    <view class="hint">
+      <view>普通用户请用微信登录，下次打开会自动记住。</view>
+      <view>测试账号 customer / Customer@123</view>
+      <view>管理员 admin / Admin@123456</view>
+    </view>
+  </view>
+</view>
