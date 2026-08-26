@@ -78,10 +78,31 @@ def test_shop_prompt_sounds_like_human_clerk():
     user = messages[1]["content"]
     assert "知识库" not in system
     assert "详情页" not in system
+    assert "吸顶灯" not in system
+    assert "柱头灯" in system and "庭院灯" in system
     assert "往好处说" in system
     assert "店员" in system or "口语" in system
     assert "不要复述全称" in system
     assert "第一款" in user or "1." in user
+
+
+@pytest.mark.asyncio
+async def test_chitchat_greeting_skips_llm_and_stays_outdoor():
+    from app.agent.nodes import handle_smalltalk, should_skip_polish
+
+    state = {
+        "messages": [{"role": "user", "content": "你好"}],
+        "intent": "chitchat",
+        "action": "casual_chat",
+        "reason_code": "chitchat",
+        "memory_context": {"workflow_state": {}},
+        "final_response": "",
+    }
+    result = await handle_smalltalk(state)
+    text = result["final_response"]
+    assert "吸顶灯" not in text
+    assert "柱头灯" in text
+    assert should_skip_polish({**state, "final_response": text}) is True
 
 
 @pytest.mark.asyncio

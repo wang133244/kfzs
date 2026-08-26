@@ -504,7 +504,7 @@ async def handle_smalltalk(state: dict[str, Any]) -> dict[str, Any]:
             ),
         }
     return {
-        "final_response": "您好，这里是星途户外照明专卖店客服，可以帮您咨询柱头灯、壁灯、太阳能庭院灯，也可查询订单、物流和售后。",
+        "final_response": "你好，星途灯具店的。店里是户外柱头灯、壁灯、庭院灯，想看哪类跟我说。",
     }
 
 
@@ -562,15 +562,18 @@ async def escalate_human(state: dict[str, Any]) -> dict[str, Any]:
     return {"needs_human": True, "human_task_id": task_id}
 
 
-_NO_POLISH_ACTIONS = {"offtopic", "cancel_handoff", "confirm_handoff", "human_handoff"}
+_NO_POLISH_ACTIONS = {"offtopic", "cancel_handoff", "confirm_handoff", "human_handoff", "casual_chat"}
 
 
 def should_skip_polish(state: dict[str, Any]) -> bool:
+    if state.get("intent") in ("chitchat", "smalltalk"):
+        return True
     if (state.get("final_response") or "") == OFFTOPIC_ASK:
         return True
     if state.get("action") in _NO_POLISH_ACTIONS:
         return True
     if state.get("reason_code") in (
+        "chitchat",
         "offtopic_keyword",
         "offline_fallback",
         "handoff_declined",
