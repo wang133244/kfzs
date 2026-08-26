@@ -1,7 +1,18 @@
 {
   "description": "星途户外照明客服小程序（顾客端）",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      { "type": "folder", "value": "backend" },
+      { "type": "folder", "value": ".git" },
+      { "type": "folder", "value": "cloudfunctions/login/node_modules" },
+      { "type": "file", "value": "Dockerfile" },
+      { "type": "file", "value": ".dockerignore" },
+      { "type": "file", "value": "启动后端.bat" },
+      { "type": "file", "value": "README.md" },
+      { "type": "suffix", "value": ".md" },
+      { "type": "suffix", "value": ".py" },
+      { "type": "suffix", "value": ".db" }
+    ],
     "include": []
   },
   "setting": {
