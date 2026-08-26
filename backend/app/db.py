@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 from sqlalchemy import text
+from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -16,6 +17,15 @@ from sqlalchemy.pool import StaticPool
 from .config import settings
 
 _MYSQL_IDENT = re.compile(r"^[A-Za-z0-9_]+$")
+
+
+def mysql_do_ping(dbapi_connection) -> bool:
+    # aiomysql 的 ping 必须传 reconnect；SQLAlchemy 2.0.36 在 pymysql 新版本下会漏传
+    dbapi_connection.ping(False)
+    return True
+
+
+MySQLDialect_pymysql.do_ping = lambda self, dbapi_connection: mysql_do_ping(dbapi_connection)
 
 
 class Base(DeclarativeBase):

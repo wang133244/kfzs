@@ -50,3 +50,15 @@ def test_mysql_admin_url_does_not_keep_app_database():
     rendered = url.render_as_string(hide_password=True)
     assert "/mysql" in rendered
     assert "/doudian" not in rendered
+
+
+def test_mysql_do_ping_passes_reconnect_argument():
+    from app.db import mysql_do_ping
+
+    class NeedsReconnect:
+        def ping(self, reconnect):
+            self.reconnect = reconnect
+
+    conn = NeedsReconnect()
+    assert mysql_do_ping(conn) is True
+    assert conn.reconnect is False
