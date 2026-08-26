@@ -3,7 +3,7 @@ import json
 
 
 def _login_headers(api_client) -> dict[str, str]:
-    # 橱窗接口与主应用一样需要 JWT，统一复用登录凭证
+    # 管理端模拟网关仍需要登录；橱窗浏览已公开
     response = api_client.post(
         "/api/v1/auth/login",
         json={"username": "admin", "password": "Admin@123456"},
@@ -12,13 +12,27 @@ def _login_headers(api_client) -> dict[str, str]:
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
 
-def test_shop_requires_auth(api_client):
-    response = api_client.get("/api/v1/shop/products")
+def test_shop_catalog_is_public(api_client):
+    response = api_client.get("/api/v1/shop/products", params={"size": 50})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] >= 13
+    ids = {item["product_id"] for item in body["items"]}
+    assert "P10009" in ids
+    assert "P10001" not in ids
+    assert all(item["cover"].startswith("/api/v1/shop/cover-proxy?u=") for item in body["items"])
+
+
+def test_checkout_requires_auth(api_client):
+    response = api_client.post(
+        "/api/v1/shop/checkout",
+        json={"items": [{"product_id": "P10009", "quantity": 1}]},
+    )
     assert response.status_code == 401
 
 
 def test_shop_categories(api_client):
-    body = api_client.get("/api/v1/shop/categories", headers=_login_headers(api_client)).json()
+    body = api_client.get("/api/v1/shop/categories").json()
     assert len(body) >= 3
     assert all(category["count"] >= 1 for category in body)
 
@@ -66,15 +80,15 @@ def test_shop_product_covers_use_local_proxy_for_cdn():
 
 
 def test_shop_product_detail_and_404(api_client):
-    headers = _login_headers(api_client)
-    detail = api_client.get("/api/v1/shop/products/P10001", headers=headers).json()
+    detail = api_client.get("/api/v1/shop/products/P10009").json()
     assert detail["title"]
     assert detail["sku_list"]
     assert detail["gallery"]
     assert detail["specs"]
+    assert detail["source_url"].startswith("https://item.taobao.com/")
     assert detail["cover"].startswith("/api/v1/shop/cover-proxy?u=")
 
-    missing = api_client.get("/api/v1/shop/products/NOPE", headers=headers)
+    missing = api_client.get("/api/v1/shop/products/NOPE")
     assert missing.status_code == 404
 
 
@@ -98,7 +112,7 @@ def test_doudian_gateway_product_detail_and_order(api_client):
     headers = _login_headers(api_client)
     detail = api_client.post(
         "/api/v1/sim/doudian/router/rest",
-        data={"method": "product.detail", "param_json": json.dumps({"product_id": "P10001"})},
+        data={"method": "product.detail", "param_json": json.dumps({"product_id": "P10009"})},
         headers=headers,
     ).json()
     assert detail["err_no"] == 0

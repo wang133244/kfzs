@@ -1,13 +1,7 @@
 const auth = require('../../utils/auth')
 const api = require('../../utils/request')
 const cart = require('../../utils/cart')
-
-function withMedia(product) {
-  if (!product) return product
-  return Object.assign({}, product, {
-    cover: auth.resolveProductMedia(product.cover)
-  })
-}
+const media = require('../../utils/media')
 
 Page({
   data: {
@@ -19,17 +13,19 @@ Page({
 
   async onShow() {
     if (!auth.requireCustomer()) return
-    this.refresh()
+    await this.refresh()
     await cart.pullFromServer()
-    this.refresh()
+    await this.refresh()
     this.loadWallet()
   },
 
-  refresh() {
-    const items = cart.getState().items.map((item) => ({
-      product: withMedia(item.product),
-      quantity: item.quantity
-    }))
+  async refresh() {
+    const items = await Promise.all(
+      cart.getState().items.map(async (item) => ({
+        product: await media.hydrateProduct(item.product),
+        quantity: item.quantity
+      }))
+    )
     const total = items.reduce((sum, item) => sum + Number(item.product.price || 0) * (item.quantity || 0), 0)
     this.setData({
       items,
@@ -79,7 +75,7 @@ Page({
       )
       cart.clear()
       auth.saveProfile({ wallet_balance: result.remaining_balance })
-      this.refresh()
+      await this.refresh()
       wx.showModal({
         title: '下单成功',
         content: '订单号 ' + result.order_id + '\n余额 ¥' + Number(result.remaining_balance).toFixed(2),

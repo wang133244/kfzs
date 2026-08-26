@@ -40,6 +40,7 @@ class ProfileOut(BaseModel):
 
 class ProfileUpdate(BaseModel):
     username: str | None = None
+    avatar_url: str | None = None
 
 
 class CartSaveRequest(BaseModel):

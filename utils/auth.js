@@ -55,14 +55,20 @@ function getLocalKey() {
 function resolveMediaUrl(url) {
   const value = (url || '').trim()
   if (!value) return '/assets/default-avatar.png'
-  if (value.indexOf('/uploads/') === 0 || value.indexOf('/api/v1/') === 0) return BASE_URL + value
+  if (value.indexOf('cloud://') === 0) return value
+  if (value.indexOf('/uploads/') === 0 || value.indexOf('/api/v1/') === 0) {
+    return BASE_URL ? BASE_URL + value : value
+  }
   return value
 }
 
 function resolveProductMedia(url) {
   const value = (url || '').trim()
   if (!value) return ''
-  if (value.indexOf('/uploads/') === 0 || value.indexOf('/api/v1/') === 0) return BASE_URL + value
+  if (value.indexOf('cloud://') === 0) return value
+  if (value.indexOf('/uploads/') === 0 || value.indexOf('/api/v1/') === 0) {
+    return BASE_URL ? BASE_URL + value : value
+  }
   return value
 }
 
@@ -131,6 +137,15 @@ function requireCustomer() {
   return true
 }
 
+function requireLoginForAction(message) {
+  if (isLoggedIn()) return true
+  wx.showToast({ title: message || '请先登录', icon: 'none' })
+  setTimeout(() => {
+    wx.reLaunch({ url: '/pages/login/login' })
+  }, 400)
+  return false
+}
+
 module.exports = {
   getToken,
   getRole,
@@ -150,5 +165,6 @@ module.exports = {
   markManualLogout,
   consumeManualLogout,
   shouldSkipAutoLogin,
-  requireCustomer
+  requireCustomer,
+  requireLoginForAction
 }

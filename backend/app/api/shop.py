@@ -62,8 +62,8 @@ async def cover_proxy(u: str = Query(..., min_length=8, max_length=2000)):
 
 
 @router.get("/categories")
-async def categories(user: User = Depends(get_current_user)) -> list[dict]:
-    # 商品分类与在售数量，供橱窗筛选栏展示
+async def categories() -> list[dict]:
+    # 商品分类与在售数量，供橱窗筛选栏展示（浏览不需要登录）
     return list_categories()
 
 
@@ -73,7 +73,6 @@ async def products(
     category: str | None = None,
     page: int = 1,
     size: int = 20,
-    user: User = Depends(get_current_user),
 ) -> dict:
     # 商品搜索：支持关键词、分类与分页，列表项不含详情大字段
     return search_products(keyword=q or "", category=category or "", page=page, size=size)
@@ -82,7 +81,6 @@ async def products(
 @router.get("/products/{product_id}")
 async def product(
     product_id: str,
-    user: User = Depends(get_current_user),
 ) -> dict:
     # 商品详情：返回图集、规格参数、SKU 与售后服务
     item = find_product(product_id)

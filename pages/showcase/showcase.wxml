@@ -41,7 +41,7 @@
       data-id="{{item.product_id}}"
       bindtap="openDetail"
     >
-      <image wx:if="{{item.cover}}" class="cover" src="{{item.cover}}" mode="aspectFill" />
+      <image wx:if="{{item.coverSrc}}" class="cover" src="{{item.coverSrc}}" mode="aspectFill" />
       <view wx:else class="cover cover-empty">灯</view>
       <view class="meta">
         <view class="name">{{item.title}}</view>

@@ -22,6 +22,7 @@
     <button class="btn" loading="{{loading}}" disabled="{{loading || wxLoading}}" bindtap="onSubmit">
       {{loading ? '登录中…' : '账号登录'}}
     </button>
+    <view class="skip" bindtap="onBrowseShop">先去逛橱窗，登录后再下单</view>
     <view class="hint">
       <view>普通用户请用微信登录，下次打开会自动记住。</view>
       <view>测试账号 customer / Customer@123</view>

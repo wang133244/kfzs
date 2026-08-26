@@ -131,6 +131,13 @@
   font-size: 22rpx;
 }
 
+.skip {
+  margin-top: 28rpx;
+  text-align: center;
+  color: #c4a35a;
+  font-size: 26rpx;
+}
+
 .hint {
   margin-top: 28rpx;
   padding: 20rpx;

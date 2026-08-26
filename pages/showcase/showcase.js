@@ -1,15 +1,7 @@
 const auth = require('../../utils/auth')
 const api = require('../../utils/request')
 const cart = require('../../utils/cart')
-
-function withMedia(product) {
-  if (!product) return product
-  const gallery = (product.gallery || []).map((item) => auth.resolveProductMedia(item))
-  return Object.assign({}, product, {
-    cover: auth.resolveProductMedia(product.cover),
-    gallery
-  })
-}
+const media = require('../../utils/media')
 
 Page({
   data: {
@@ -22,7 +14,6 @@ Page({
   },
 
   onShow() {
-    if (!auth.requireCustomer()) return
     this.loadAll()
   },
 
@@ -41,7 +32,11 @@ Page({
       } catch (err) {}
       await this.loadProducts()
     } catch (err) {
-      this.setData({ error: err.message || '商品加载失败', products: [] })
+      const message = err.message || '商品加载失败'
+      this.setData({ error: message, products: [] })
+      if (message.indexOf('登录') >= 0) {
+        auth.requireLoginForAction('请先登录后查看橱窗')
+      }
     } finally {
       this.setData({ loading: false })
     }
@@ -54,7 +49,8 @@ Page({
       page: 1,
       size: 50
     })
-    this.setData({ products: (data.items || []).map(withMedia) })
+    const products = await Promise.all((data.items || []).map((item) => media.hydrateProduct(item)))
+    this.setData({ products })
   },
 
   async onCategory(e) {
@@ -87,6 +83,7 @@ Page({
   },
 
   addCart(e) {
+    if (!auth.requireLoginForAction('请先登录再加购')) return
     const id = e.currentTarget.dataset.id
     const product = this.data.products.find((item) => item.product_id === id)
     if (!product) return

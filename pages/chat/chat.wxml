@@ -34,7 +34,7 @@
             data-id="{{card.product_id}}"
             bindtap="openProduct"
           >
-            <image wx:if="{{card.cover}}" class="card-cover" src="{{card.cover}}" mode="aspectFill" />
+            <image wx:if="{{card.coverSrc}}" class="card-cover" src="{{card.coverSrc}}" mode="aspectFill" />
             <view wx:else class="card-cover card-cover-empty"></view>
             <view class="card-body">
               <view class="card-title">{{card.title}}</view>

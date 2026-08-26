@@ -129,8 +129,17 @@ async def update_me(
         if taken is not None:
             raise HTTPException(status_code=409, detail="用户名已被占用")
         row.username = name
-        await db.commit()
-        await db.refresh(row)
+    if payload.avatar_url is not None:
+        url = payload.avatar_url.strip()
+        if url and not (
+            url.startswith("cloud://") or url.startswith("/uploads/") or url.startswith("https://")
+        ):
+            raise HTTPException(status_code=400, detail="头像地址不合法")
+        if len(url) > 512:
+            raise HTTPException(status_code=400, detail="头像地址过长")
+        row.avatar_url = url
+    await db.commit()
+    await db.refresh(row)
     return ProfileOut(
         id=row.id,
         username=row.username,

@@ -33,6 +33,10 @@ Page({
     this.setData({ password: e.detail.value })
   },
 
+  onBrowseShop() {
+    wx.switchTab({ url: '/pages/showcase/showcase' })
+  },
+
   async onWechatLogin() {
     if (this.data.wxLoading || this.data.loading) return
     this.setData({ wxLoading: true, error: '' })

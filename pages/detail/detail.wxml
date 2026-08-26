@@ -1,5 +1,5 @@
 <view class="page" wx:if="{{product}}">
-  <image wx:if="{{product.cover}}" class="hero" src="{{product.cover}}" mode="aspectFill" />
+  <image wx:if="{{product.coverSrc}}" class="hero" src="{{product.coverSrc}}" mode="aspectFill" />
   <view wx:else class="hero hero-empty"></view>
 
   <view class="panel">

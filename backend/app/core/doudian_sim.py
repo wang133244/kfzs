@@ -241,12 +241,12 @@ METHODS = [
     {
         "method": "product.search",
         "description": "按关键词与分类搜索在售商品",
-        "params": {"keyword": "", "category": "digital", "page": 1, "size": 20},
+        "params": {"keyword": "", "category": "post", "page": 1, "size": 20},
     },
     {
         "method": "product.detail",
         "description": "查询商品详情与 SKU",
-        "params": {"product_id": "P10001"},
+        "params": {"product_id": "P10009"},
     },
     {
         "method": "order.searchList",

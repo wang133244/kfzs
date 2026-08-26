@@ -1,46 +1,124 @@
-const { BASE_URL } = require('./config')
+const { USE_CLOUD, BASE_URL } = require('./config')
 const { getToken, expireSession } = require('./auth')
+const cloud = require('./cloud')
 
-function request(path, options) {
-  const opts = options || {}
-  return new Promise((resolve, reject) => {
-    const header = Object.assign(
-      { 'Content-Type': 'application/json' },
-      opts.header || {}
-    )
-    const token = getToken()
-    if (token) {
-      header.Authorization = 'Bearer ' + token
+function isPublicShopPath(path) {
+  return (
+    path.indexOf('/api/v1/shop/categories') === 0 ||
+    path.indexOf('/api/v1/shop/products') === 0 ||
+    path.indexOf('/api/v1/shop/cover-proxy') === 0
+  )
+}
+
+function parseDetail(data) {
+  let body = data
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body)
+    } catch (err) {
+      return '请求失败'
     }
+  }
+  const detail = body && body.detail
+  return typeof detail === 'string' ? detail : '请求失败'
+}
+
+function authHeader(skipAuth) {
+  const header = { 'content-type': 'application/json', 'Content-Type': 'application/json' }
+  const token = skipAuth ? '' : getToken()
+  if (token) header.Authorization = 'Bearer ' + token
+  return header
+}
+
+function finish(res, resolve, reject, path) {
+  if (!res) {
+    reject(new Error('无法连接云端客服'))
+    return
+  }
+  if (res.statusCode === 401) {
+    if (!isPublicShopPath(path)) expireSession()
+    reject(new Error(isPublicShopPath(path) ? 'SHOP_AUTH' : '登录已过期'))
+    return
+  }
+  if (res.statusCode === 204) {
+    resolve(null)
+    return
+  }
+  if (res.statusCode < 200 || res.statusCode >= 300) {
+    reject(new Error(parseDetail(res.data)))
+    return
+  }
+  let body = res.data
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body)
+    } catch (err) {}
+  }
+  resolve(body)
+}
+
+function httpRequest(path, options, skipAuth) {
+  const opts = options || {}
+  const method = opts.method || 'GET'
+  return new Promise((resolve, reject) => {
     wx.request({
       url: BASE_URL + path,
-      method: opts.method || 'GET',
+      method,
       data: opts.data,
-      header,
+      header: authHeader(skipAuth),
       timeout: 60000,
       success(res) {
-        if (res.statusCode === 401) {
-          expireSession()
-          wx.reLaunch({ url: '/pages/login/login' })
-          reject(new Error('登录已过期'))
-          return
-        }
-        if (res.statusCode === 204) {
-          resolve(null)
-          return
-        }
-        if (res.statusCode < 200 || res.statusCode >= 300) {
-          const detail = res.data && res.data.detail
-          reject(new Error(typeof detail === 'string' ? detail : '请求失败'))
-          return
-        }
-        resolve(res.data)
+        finish(res, resolve, reject, path)
       },
       fail() {
-        reject(new Error('无法连接云端客服，请检查网络或在开发者工具关闭域名校验'))
+        reject(new Error(USE_CLOUD ? '无法连接云托管公网地址' : '无法连接本机后端，请先启动 backend'))
       }
     })
   })
+}
+
+function containerRequest(path, options, skipAuth) {
+  const opts = options || {}
+  const method = opts.method || 'GET'
+  const payload = {
+    path,
+    method,
+    header: authHeader(skipAuth),
+    dataType: 'json'
+  }
+  if (method !== 'GET' && method !== 'HEAD' && method !== 'DELETE') {
+    payload.data = opts.data || {}
+  }
+  return cloud.callContainer(payload).then(
+    (res) =>
+      new Promise((resolve, reject) => {
+        finish(res, resolve, reject, path)
+      })
+  )
+}
+
+function requestOnce(path, options, skipAuth) {
+  if (!USE_CLOUD) return httpRequest(path, options, skipAuth)
+  return containerRequest(path, options, skipAuth).catch((err) => {
+    return httpRequest(path, options, skipAuth).catch(() => Promise.reject(err))
+  })
+}
+
+function request(path, options) {
+  return requestOnce(path, options, false)
+    .catch((err) => {
+      if (err && err.message === 'SHOP_AUTH' && getToken()) {
+        return requestOnce(path, options, true)
+      }
+      return Promise.reject(err)
+    })
+    .catch((err) => {
+      if (err && err.message === 'SHOP_AUTH') {
+        expireSession()
+        return Promise.reject(new Error('请先登录后查看橱窗'))
+      }
+      return Promise.reject(err)
+    })
 }
 
 function login(username, password) {
@@ -129,6 +207,31 @@ function saveCart(items) {
 }
 
 function uploadAvatar(filePath) {
+  if (USE_CLOUD) {
+    const { CLOUD_ENV } = require('./config')
+    const cloudPath = 'avatars/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg'
+    return cloud.ensureCloud().then(
+      () =>
+        new Promise((resolve, reject) => {
+          wx.cloud.uploadFile({
+            cloudPath,
+            filePath,
+            config: { env: CLOUD_ENV },
+            success(res) {
+              if (!res.fileID) {
+                reject(new Error('头像上传失败'))
+                return
+              }
+              updateMe({ avatar_url: res.fileID }).then(resolve).catch(reject)
+            },
+            fail() {
+              reject(new Error('头像上传失败，请在云开发开通云存储'))
+            }
+          })
+        })
+    )
+  }
+
   return new Promise((resolve, reject) => {
     const token = getToken()
     wx.uploadFile({
@@ -140,27 +243,21 @@ function uploadAvatar(filePath) {
       success(res) {
         if (res.statusCode === 401) {
           expireSession()
-          wx.reLaunch({ url: '/pages/login/login' })
           reject(new Error('登录已过期'))
           return
         }
         if (res.statusCode < 200 || res.statusCode >= 300) {
-          let detail = '头像上传失败'
-          try {
-            const body = JSON.parse(res.data || '{}')
-            if (body.detail) detail = body.detail
-          } catch (err) {}
-          reject(new Error(detail))
+          reject(new Error(parseDetail(res.data)))
           return
         }
         try {
-          resolve(JSON.parse(res.data))
+          resolve(typeof res.data === 'string' ? JSON.parse(res.data) : res.data)
         } catch (err) {
           reject(new Error('头像上传失败'))
         }
       },
       fail() {
-        reject(new Error('无法连接云端客服，请检查网络'))
+        reject(new Error('无法连接本机后端，请检查网络'))
       }
     })
   })

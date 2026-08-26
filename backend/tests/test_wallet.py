@@ -82,6 +82,25 @@ def test_update_username_and_reject_conflict(api_client):
     assert conflict.status_code == 409
 
 
+def test_update_avatar_url_accepts_cloud_file(api_client):
+    login = api_client.post("/api/v1/auth/wechat", json={"local_key": "avatar-cloud"}).json()
+    headers = {"Authorization": f"Bearer {login['access_token']}"}
+    updated = api_client.patch(
+        "/api/v1/auth/me",
+        headers=headers,
+        json={"avatar_url": "cloud://cloud1-demo/avatars/a.jpg"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["avatar_url"].startswith("cloud://")
+
+    rejected = api_client.patch(
+        "/api/v1/auth/me",
+        headers=headers,
+        json={"avatar_url": "javascript:alert(1)"},
+    )
+    assert rejected.status_code == 400
+
+
 def test_checkout_deducts_wallet_and_saves_timed_order(api_client):
     headers, _ = _customer(api_client)
     products = api_client.get("/api/v1/shop/products", headers=headers, params={"size": 1}).json()

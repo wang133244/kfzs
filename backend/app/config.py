@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     customer_username: str = "customer"
     customer_password: str = "Customer@123"
 
-    wechat_appid: str = "wxcecff699667444d5"
+    wechat_appid: str = "wx2aa5f2c85393e806"
     wechat_secret: str = ""
     initial_wallet: float = 2000.0
 

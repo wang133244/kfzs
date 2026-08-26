@@ -3,11 +3,39 @@
 import json
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from ..data import showcase
 from ..db import async_session_factory
 from ..models import Product, ProductInventory
+
+# 旧版种子里的 Unsplash 占位商品。云托管空库曾只导入这 3 条，导致线上商城没有真实灯具。
+_PLACEHOLDER_PRODUCT_IDS = frozenset({"P10001", "P10002", "P10003"})
+
+
+def _product_row_from_seed(item: dict) -> dict:
+    return {
+        "title": item["title"],
+        "subtitle": item.get("subtitle", ""),
+        "category": item.get("category", "柱头灯"),
+        "category_code": item.get("category_code", "post"),
+        "price": item["price"],
+        "original_price": item["original_price"],
+        "sales_count": item.get("sales_count", 0),
+        "cover": item.get("cover", ""),
+        "cover_color": item.get("cover_color", "#E5E7EB"),
+        "description": item.get("description", ""),
+        "gallery_json": json.dumps(item.get("gallery", []), ensure_ascii=False),
+        "specs_json": json.dumps(item.get("specs", []), ensure_ascii=False),
+        "skus_json": json.dumps(
+            [{**sku, "price": float(sku["price"])} for sku in item.get("skus", [])],
+            ensure_ascii=False,
+        ),
+        "services_json": json.dumps(item.get("services", []), ensure_ascii=False),
+        "tags_json": json.dumps(item.get("tags", []), ensure_ascii=False),
+        "status": item.get("status", "on_sale"),
+        "source_url": item.get("source_url", ""),
+    }
 
 
 def _loads_list(raw: str | None) -> list:
@@ -81,37 +109,32 @@ async def _ensure_inventory(session, products: list[Product]) -> None:
 
 
 async def seed_and_sync_products() -> None:
-    # 启动时调用：DB 为空则从 showcase 种子导入，随后同步到内存
+    # 启动时调用：补齐种子灯具，并清掉旧 Unsplash 占位商品，再同步到内存
     async with async_session_factory() as session:
-        count = await session.scalar(select(Product))
-        if not count:
-            for item in showcase.PRODUCTS:
-                session.add(
-                    Product(
-                        product_id=item["product_id"],
-                        title=item["title"],
-                        subtitle=item.get("subtitle", ""),
-                        category=item.get("category", "柱头灯"),
-                        category_code=item.get("category_code", "post"),
-                        price=item["price"],
-                        original_price=item["original_price"],
-                        sales_count=item.get("sales_count", 0),
-                        cover=item.get("cover", ""),
-                        cover_color=item.get("cover_color", "#E5E7EB"),
-                        description=item.get("description", ""),
-                        gallery_json=json.dumps(item.get("gallery", []), ensure_ascii=False),
-                        specs_json=json.dumps(item.get("specs", []), ensure_ascii=False),
-                        skus_json=json.dumps(
-                            [{**sku, "price": float(sku["price"])} for sku in item.get("skus", [])],
-                            ensure_ascii=False,
-                        ),
-                        services_json=json.dumps(item.get("services", []), ensure_ascii=False),
-                        tags_json=json.dumps(item.get("tags", []), ensure_ascii=False),
-                        status=item.get("status", "on_sale"),
-                        source_url=item.get("source_url", ""),
-                    )
-                )
-            await session.commit()
+        existing = {
+            row.product_id: row
+            for row in (await session.scalars(select(Product))).all()
+        }
+        seed_ids = {item["product_id"] for item in showcase.PRODUCTS}
+        stale_ids = [
+            product_id
+            for product_id in existing
+            if product_id in _PLACEHOLDER_PRODUCT_IDS and product_id not in seed_ids
+        ]
+        if stale_ids:
+            await session.execute(
+                delete(ProductInventory).where(ProductInventory.product_id.in_(stale_ids))
+            )
+            for product_id in stale_ids:
+                await session.delete(existing[product_id])
+            await session.flush()
+
+        for item in showcase.PRODUCTS:
+            if item["product_id"] in existing and item["product_id"] not in stale_ids:
+                continue
+            session.add(Product(product_id=item["product_id"], **_product_row_from_seed(item)))
+        await session.commit()
+
         result = await session.scalars(select(Product).order_by(Product.id))
         products = list(result)
         await _ensure_inventory(session, products)

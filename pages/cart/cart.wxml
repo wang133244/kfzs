@@ -1,7 +1,7 @@
 <view class="page">
   <view wx:if="{{items.length}}">
     <view wx:for="{{items}}" wx:for-index="idx" wx:key="idx" class="row">
-      <image wx:if="{{item.product.cover}}" class="cover" src="{{item.product.cover}}" mode="aspectFill" />
+      <image wx:if="{{item.product.coverSrc}}" class="cover" src="{{item.product.coverSrc}}" mode="aspectFill" />
       <view wx:else class="cover cover-empty"></view>
       <view class="info">
         <view class="name">{{item.product.title}}</view>

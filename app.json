@@ -1,8 +1,8 @@
 {
   "pages": [
+    "pages/showcase/showcase",
     "pages/login/login",
     "pages/chat/chat",
-    "pages/showcase/showcase",
     "pages/cart/cart",
     "pages/profile/profile",
     "pages/wallet/wallet",

@@ -37,6 +37,11 @@ conda run -n langchain python -m uvicorn app.main:app --reload --host 127.0.0.1 
 - 个人中心：头像 / 用户名可改、钱包、订单查询
 - 订单号格式为下单时间，例如 `2024.12.3.8.23.12`
 
-接口地址在 `utils/config.js` 的 `BASE_URL`。小程序默认请求云托管：  
-`https://prod-302921-8-1474916664.sh.run.tcloudbase.com`  
-本地调试后端时把 `USE_CLOUD` 改为 `false`。
+接口走微信云托管 `callContainer`，**不要**把 `*.sh.run.tcloudbase.com` 配进小程序合法域名（那是测试域名，正式环境会被拒绝）。
+
+小程序默认连接云托管服务 `prod`，环境 ID 在 `utils/config.js` 的 `CLOUD_ENV`。本地调试后端时把 `USE_CLOUD` 改为 `false`。
+
+正式使用前：
+1. 云托管控制台确认服务名是 `prod`，并已发布最新版本。
+2. 微信公众平台 → 设置 → 基本设置 → **基础库最低版本 2.23.0** 以上。
+3. 重新编译 / 上传小程序。无需再配置 request / downloadFile 合法域名。

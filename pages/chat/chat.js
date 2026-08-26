@@ -2,12 +2,10 @@ const auth = require('../../utils/auth')
 const api = require('../../utils/request')
 const userStore = require('../../utils/userStore')
 const { INTRO_MESSAGE } = require('../../utils/config')
+const media = require('../../utils/media')
 
-function withCardMedia(card) {
-  if (!card) return card
-  return Object.assign({}, card, {
-    cover: auth.resolveProductMedia(card.cover)
-  })
+function hydrateCards(cards) {
+  return Promise.all((cards || []).map((card) => media.hydrateProduct(card)))
 }
 
 Page({
@@ -59,7 +57,7 @@ Page({
       if (sessions && sessions.length) {
         const latest = sessions[0]
         const history = await api.getMessages(latest.id)
-        const messages = this.mapHistory(history)
+        const messages = await this.mapHistory(history)
         if (messages.length) {
           this.applyChat(latest.id, messages)
           return
@@ -74,10 +72,12 @@ Page({
       if (cached && cached.messages && cached.messages.length) {
         this.setData({
           sessionId: cached.sessionId || null,
-          messages: (cached.messages || []).map((msg) =>
-            Object.assign({}, msg, {
-              product_cards: (msg.product_cards || []).map(withCardMedia)
-            })
+          messages: await Promise.all(
+            (cached.messages || []).map(async (msg) =>
+              Object.assign({}, msg, {
+                product_cards: await hydrateCards(msg.product_cards)
+              })
+            )
           ),
           scrollTo: 'bottom'
         })
@@ -89,13 +89,17 @@ Page({
     }
   },
 
-  mapHistory(history) {
-    return (history || []).map((item, index) => ({
-      id: 'h-' + item.id + '-' + index,
-      role: item.role === 'user' ? 'user' : item.role === 'staff' ? 'staff' : 'assistant',
-      content: item.content,
-      product_cards: (item.product_cards || []).map(withCardMedia)
-    }))
+  async mapHistory(history) {
+    const messages = []
+    for (const item of history || []) {
+      messages.push({
+        id: 'h-' + item.id + '-' + messages.length,
+        role: item.role === 'user' ? 'user' : item.role === 'staff' ? 'staff' : 'assistant',
+        content: item.content,
+        product_cards: await hydrateCards(item.product_cards)
+      })
+    }
+    return messages
   },
 
   resetIntro(saveCache) {
@@ -148,7 +152,7 @@ Page({
         id: 'a-' + result.message_id,
         role: 'assistant',
         content: result.response || '',
-        product_cards: (result.product_cards || []).map(withCardMedia)
+        product_cards: await hydrateCards(result.product_cards)
       }
       this.setData({
         sessionId: result.session_id,
