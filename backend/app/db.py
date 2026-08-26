@@ -58,6 +58,12 @@ async_session_factory = async_sessionmaker(
 )
 
 
+def mysql_admin_url(database_url: str, admin_db: str = "mysql"):
+    # SQLAlchemy 的 URL.set(database=None) 表示不改库名，建库必须显式连到 mysql 系统库
+    parsed = make_url(database_url)
+    return parsed._replace(database=admin_db)
+
+
 async def get_db():
     # FastAPI 依赖：每个请求使用独立数据库会话
     async with async_session_factory() as session:
@@ -91,23 +97,35 @@ async def ensure_mysql_database() -> None:
     db_name = parsed.database or "doudian"
     if not _MYSQL_IDENT.fullmatch(db_name):
         raise ValueError(f"非法数据库名: {db_name}")
-    admin_engine = create_async_engine(
-        parsed.set(database=None),
-        **_engine_kwargs(url),
-    )
-    try:
-        async def _create() -> None:
-            async with admin_engine.begin() as conn:
-                await conn.execute(
-                    text(
-                        f"CREATE DATABASE IF NOT EXISTS `{db_name}` "
-                        "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-                    )
-                )
+    last_error: Exception | None = None
+    for admin_db in ("mysql", ""):
+        admin_engine = create_async_engine(
+            mysql_admin_url(url, admin_db),
+            **_engine_kwargs(url),
+        )
+        try:
 
-        await retry_mysql_connect(_create)
-    finally:
-        await admin_engine.dispose()
+            async def _create() -> None:
+                async with admin_engine.begin() as conn:
+                    await conn.execute(
+                        text(
+                            f"CREATE DATABASE IF NOT EXISTS `{db_name}` "
+                            "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+                        )
+                    )
+
+            await retry_mysql_connect(_create)
+            return
+        except Exception as exc:
+            last_error = exc
+            message = str(exc).lower()
+            if "1049" in message or "unknown database" in message:
+                continue
+            raise
+        finally:
+            await admin_engine.dispose()
+    if last_error is not None:
+        raise last_error
 
 
 # Make `python -m app.db.init_db` resolve while keeping app/db.py as the

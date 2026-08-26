@@ -38,3 +38,15 @@ def test_explicit_mysql_database_url_still_works():
     assert settings.resolved_database_url.startswith("mysql+aiomysql://root:secret@")
     assert settings.is_sqlite is False
     assert settings.mysql_database_name == "shop"
+
+
+def test_mysql_admin_url_does_not_keep_app_database():
+    from app.db import mysql_admin_url
+
+    url = mysql_admin_url(
+        "mysql+aiomysql://root:secret@10.31.107.132:3306/doudian?charset=utf8mb4"
+    )
+    assert url.database == "mysql"
+    rendered = url.render_as_string(hide_password=True)
+    assert "/mysql" in rendered
+    assert "/doudian" not in rendered
