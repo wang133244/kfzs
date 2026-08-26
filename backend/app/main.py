@@ -1,3 +1,5 @@
+import logging
+import threading
 from contextlib import asynccontextmanager
 
 from pathlib import Path
@@ -13,11 +15,23 @@ from .api import human_chat, product_admin
 from .config import settings
 from .seed import init_db
 
+logger = logging.getLogger(__name__)
+
+
+def _warm_rag() -> None:
+    # 后台线程预热知识库，不占用事件循环，探活可以先通过
+    try:
+        from .rag.store import get_collection
+
+        get_collection(rebuild=True)
+    except Exception:
+        logger.exception("RAG warmup failed")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 只做建表，知识库延后到首次检索；避免云托管探测端口时被模型下载堵住
     await init_db()
+    threading.Thread(target=_warm_rag, name="rag-warmup", daemon=True).start()
     yield
 
 

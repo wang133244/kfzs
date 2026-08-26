@@ -13,6 +13,8 @@ RUN apt-get update \
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY backend/vendor/chroma-onnx/all-MiniLM-L6-v2 /root/.cache/chroma/onnx_models/all-MiniLM-L6-v2
+
 COPY backend/app ./app
 
 EXPOSE 8000

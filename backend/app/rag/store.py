@@ -54,15 +54,30 @@ class HashEmbeddingFunction:
         return "hash-offline"
 
 
+def _onnx_model_cached() -> bool:
+    # Chroma MiniLM 已解压到缓存时才启用语义向量，避免启动时再下载
+    extracted = Path.home() / ".cache" / "chroma" / "onnx_models" / "all-MiniLM-L6-v2" / "onnx"
+    required = (
+        "config.json",
+        "model.onnx",
+        "special_tokens_map.json",
+        "tokenizer_config.json",
+        "tokenizer.json",
+        "vocab.txt",
+    )
+    return all((extracted / name).is_file() for name in required)
+
+
 # 双通道嵌入：优先 ONNX 语义模型，任何异常都自动回退到哈希嵌入，保证服务可用
 class SafeEmbeddingFunction:
     """Try ONNX MiniLM first, then fall back to an offline hash embedding."""
 
     def __init__(self) -> None:
-        # 默认不用 ONNXMiniLM：首次构造会下载约 80MB 模型，云托管健康检查会因此失败
+        # 模型已在镜像/本机缓存，或显式允许下载时才加载 MiniLM
         self._onnx = None
         self._hash = HashEmbeddingFunction()
-        if os.getenv("CHROMA_DOWNLOAD_ONNX") == "1":
+        allow_download = os.getenv("CHROMA_DOWNLOAD_ONNX") == "1"
+        if _onnx_model_cached() or allow_download:
             try:
                 self._onnx = embedding_functions.ONNXMiniLM_L6_V2()
             except Exception:
