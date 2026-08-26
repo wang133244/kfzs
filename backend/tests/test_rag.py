@@ -60,4 +60,11 @@ async def test_hybrid_answer_mentions_product_price():
     assert citations
     assert relevance >= 0.1
     assert "售价" in answer or "350" in answer or "元" in answer
+    assert "知识库" not in answer
+
+
+def test_hybrid_rag_module_does_not_bind_llm():
+    from app.core import hybrid_rag
+
+    assert not hasattr(hybrid_rag, "_llm_client")
 

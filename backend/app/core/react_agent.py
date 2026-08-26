@@ -151,7 +151,7 @@ class ControlledReActAgent:
             if not results:
                 return "暂时没有找到相关内容。"
             lines = [f"- {item['text']}" for item in results[:3]]
-            return "根据知识库为您整理：\n" + "\n".join(lines)
+            return "店里相关信息如下：\n" + "\n".join(lines)
         if result.tool_name == "process_refund":
             return f"您的退款申请已受理，已转人工审核，任务编号：{data.get('task_id', '')}。"
         if result.tool_name == "process_shipment":

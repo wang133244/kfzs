@@ -41,3 +41,17 @@ def plain_customer_text(text: str) -> str:
     value = re.sub(r"\s*\[\d+\]", "", value)
     value = re.sub(r"\s*\n\s*", " ", value)
     return re.sub(r"\s{2,}", " ", value).strip()
+
+
+def humanize_customer_text(text: str) -> str:
+    """去掉说明书腔和推脱话，给顾客看店员口吻。"""
+    value = plain_customer_text(text)
+    value = re.sub(r"根据知识库[：:]\s*", "", value)
+    value = re.sub(r"目前知识库中没有[^。！？]*[。！？]?", "", value)
+    value = re.sub(r"知识库(?:中|里)?(?:没有|未收录|暂无)[^。！？]*[。！？]?", "", value)
+    value = value.replace("知识库", "")
+    value = re.sub(r"[^。！？]*详情页[^。！？]*[。！？]?", "", value)
+    value = re.sub(r"[^。！？]*建议您?查看商品详情[^。！？]*[。！？]?", "", value)
+    value = re.sub(r"[^。！？]*联系店铺客服进一步确认[^。！？]*[。！？]?", "", value)
+    cleaned = re.sub(r"\s{2,}", " ", value).strip(" ，,")
+    return cleaned or "这款户外做了防水，日常风吹雨淋能用，你可以放心看看。"

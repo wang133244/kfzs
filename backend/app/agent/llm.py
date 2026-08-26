@@ -48,6 +48,8 @@ def _llm_client() -> ChatOpenAI:
         api_key=settings.llm_api_key,
         base_url=settings.llm_base_url,
         temperature=settings.llm_temperature,
+        max_tokens=280,
+        timeout=20,
     )
 
 
@@ -89,9 +91,22 @@ def classify_intent(message: str) -> str:
     return _llm_intent(message)
 
 
+def _short_title(title: str) -> str:
+    title = (title or "").strip()
+    return title[:16] + "…" if len(title) > 18 else title
+
+
 def _evidence_for_prompt(state: dict[str, Any]) -> str:
     # 只把工具结果和检索片段交给模型，防止模型编造事实
     parts: list[str] = []
+    cards = state.get("product_cards") or []
+    if cards:
+        listing = []
+        for index, card in enumerate(cards[:4], start=1):
+            price = card.get("price")
+            price_text = f"{float(price):.0f}元" if price not in (None, "") else ""
+            listing.append(f"{index}. {_short_title(str(card.get('title') or ''))} {price_text}".strip())
+        parts.append("刚才推荐的商品：\n" + "\n".join(listing))
     for result in state.get("tool_results") or []:
         parts.append(
             f"{result.get('name')}: "
@@ -129,9 +144,17 @@ def _llm_prompt(state: dict[str, Any]) -> list[dict[str, str]]:
     for item in long_term:
         memory_bits.append(f"长期记忆：{item.get('content')}")
     system = (
-        "你是星途户外照明专卖店智能客服。只能依据“依据”中的工具结果和知识库片段回答，"
-        "只介绍本店灯具，不得编造订单号、金额、库存或政策；使用简体中文，回复简洁专业。"
-        "如果用户在追问刚才的商品或订单，结合对话记忆作答，不要装作没有上文。"
+        "你是星途灯具店的微信客服店员，说话要像真人：口语、短句、别客套。"
+        "一次最多 3 句，大约 80 字。"
+        "不要提检索资料、说明书腔。"
+        "不要复述全称，用「这款」「刚才第一款」。"
+        "用户说「第一个」就是推荐列表第 1 件。"
+        "往好处说、别泼冷水，但不要夸成永不损坏、终身质保。"
+        "问耐不耐用：有防水、不锈钢、太阳能就说户外能用、做了防水，正常风吹雨淋没问题。"
+        "不要推脱，不要让顾客自己去翻页面或转去问别人。"
+        "价格、库存、订单号只能用依据里的数字，不要编。"
+        "不要使用 markdown。"
+        "追问时结合刚才在聊的商品，不要装失忆。"
     )
     user = (
         f"用户消息：{last_user}\n"
@@ -140,7 +163,7 @@ def _llm_prompt(state: dict[str, Any]) -> list[dict[str, str]]:
         f"最近对话：\n{chr(10).join(history_lines) or '（无）'}\n"
         f"记忆：\n{chr(10).join(memory_bits) or '（无）'}\n\n"
         f"依据：\n{evidence or '（无）'}\n\n"
-        "请给出最终回复。"
+        "用店员口吻直接回复顾客。"
     )
     return [
         {"role": "system", "content": system},

@@ -4,9 +4,6 @@ from typing import Any
 
 from ..rag.store import _load_knowledge_chunks, keyword_score, search_knowledge_with_distances
 from .ingestion import ingestion_service
-from ..agent.llm import _llm_client
-from ..config import settings
-import asyncio
 
 
 def _query_terms(query: str) -> set[str]:
@@ -153,30 +150,7 @@ async def hybrid_search_with_answer(query: str, top_k: int = 3) -> tuple[str, li
         {"source": item.get("source", "unknown"), "text": item.get("text", ""), "score": item.get("score")}
         for item in results
     ]
-    # LLM enabled: generate answer with the model based on retrieved chunks
-    if settings.llm_provider.lower() != "mock":
-        context = "\n\n".join(
-            f"[chunk {i+1}] {item.get('text', '')}" for i, item in enumerate(results)
-        )
-        system = (
-            "你是星途户外照明专卖店智能客服。只回答本店灯具（柱头灯、户外壁灯、太阳能庭院灯）相关问题，"
-            "请仅依据下方知识库片段作答，不得编造价格、商品编号或规格。"
-            "推荐商品时必须使用片段中的真实名称和售价。"
-            "如果片段中没有相关内容，回复'暂时没有相关内容。'。"
-            "使用简体中文，回复简洁专业。"
-        )
-        user = f"用户问题：{query}\n\n知识库片段：\n{context}\n\n请回答："
-        try:
-            response = await asyncio.to_thread(
-                _llm_client().invoke,
-                [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            )
-            answer = str(response.content).strip()
-            if answer:
-                return answer, citations, relevance_score
-        except Exception:
-            pass  # fallback to lexical extraction
-    # mock mode or LLM failed: lexical extraction
+    # 检索只抽证据，口语回复交给最后一轮润色，避免连打两次大模型
     terms = _query_terms(query)
     candidates: list[tuple[float, str]] = []
     for item in results:
@@ -200,5 +174,5 @@ async def hybrid_search_with_answer(query: str, top_k: int = 3) -> tuple[str, li
             selected.append(sentence[:240])
         if len(selected) == 3:
             break
-    answer = "根据知识库：" + " ".join(selected)
+    answer = " ".join(selected)
     return answer, citations, relevance_score

@@ -14,7 +14,7 @@ from ..core.hybrid_rag import hybrid_search_with_answer
 from ..config import settings
 from ..core.recommend import cards_from_result, recommend_for_user, recommend_products
 from ..core.memory import expand_query, extract_category, memory_service
-from ..core.safety import mask_sensitive, validate_customer_answer, plain_customer_text
+from ..core.safety import mask_sensitive, validate_customer_answer, humanize_customer_text
 
 ORDER_ID_PATTERN = re.compile(r"(?:ORD-|订单\s*)(\d{3,})")
 SKU_PATTERN = re.compile(r"(SKU-\d+|SKU\d+)", re.IGNORECASE)
@@ -604,7 +604,7 @@ async def final_answer(state: dict[str, Any]) -> dict[str, Any]:
 
     citations = sorted(set(state.get("citations") or []))
     return {
-        "final_response": response,
+        "final_response": humanize_customer_text(response),
         "citations": citations,
         "needs_human": bool(state.get("needs_human")),
         "safety_blocked": False,

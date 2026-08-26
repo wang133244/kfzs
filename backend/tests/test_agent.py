@@ -59,6 +59,67 @@ def test_grounding_passes_verified_fact():
     assert result["ok"] is True
 
 
+def test_shop_prompt_sounds_like_human_clerk():
+    from app.agent.llm import _llm_prompt
+
+    messages = _llm_prompt(
+        {
+            "messages": [{"role": "user", "content": "第一个耐用吗"}],
+            "intent": "product",
+            "retrieved_chunks": ["太阳能柱头灯 售价 110 元，IP65 防水，不锈钢灯体。"],
+            "product_cards": [
+                {"title": "太阳能柱头灯户外庭院中式别墅围墙立柱灯自动开关智能光控新中式", "price": 110}
+            ],
+            "tool_results": [],
+            "memory_context": {"recent_messages": [], "workflow_state": {"last_product_title": "太阳能柱头灯"}},
+        }
+    )
+    system = messages[0]["content"]
+    user = messages[1]["content"]
+    assert "知识库" not in system
+    assert "详情页" not in system
+    assert "往好处说" in system
+    assert "店员" in system or "口语" in system
+    assert "不要复述全称" in system
+    assert "第一款" in user or "1." in user
+
+
+@pytest.mark.asyncio
+async def test_final_answer_strips_markdown_and_knowledge_base_talk(monkeypatch):
+    from app.agent import llm
+    from app.agent.nodes import final_answer
+
+    original_provider = llm.settings.llm_provider
+    original_key = llm.settings.llm_api_key
+    llm.settings.llm_provider = "deepseek"
+    llm.settings.llm_api_key = "test-key"
+    try:
+        class FakeResponse:
+            content = "根据知识库：这款**很耐用**，售价 110 元。建议您查看商品详情页了解材质。"
+
+        monkeypatch.setattr(llm.ChatOpenAI, "invoke", lambda self, messages: FakeResponse())
+        result = await final_answer(
+            {
+                "messages": [{"role": "user", "content": "耐用吗"}],
+                "intent": "product",
+                "needs_human": False,
+                "final_response": "草稿 110",
+                "citations": [],
+                "tool_results": [],
+                "retrieved_chunks": ["太阳能柱头灯 售价 110 元，IP65 防水"],
+                "human_task_id": None,
+            }
+        )
+        text = result["final_response"]
+        assert "知识库" not in text
+        assert "详情页" not in text
+        assert "**" not in text
+        assert "110" in text
+    finally:
+        llm.settings.llm_provider = original_provider
+        llm.settings.llm_api_key = original_key
+
+
 def test_mock_mode_does_not_call_network(monkeypatch):
     from app.agent import llm
 

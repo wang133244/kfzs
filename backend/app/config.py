@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_base_url: str = "https://api.deepseek.com"
     llm_model: str = "deepseek-chat"
-    llm_temperature: float = 0.2
+    llm_temperature: float = 0.4
 
     embedding_provider: str = "onnx"
     embedding_model: str = "text-embedding-3-small"
