@@ -152,7 +152,7 @@ def _spoken_product_reply(message: str, answer: str, cards: list[dict], rec=None
     for card in cards:
         title = str(card.get("title") or "")
         if len(title) > 16 and title[:16] in spoken:
-            return "这款可以看看，点卡片看详情。"
+            return "这几款可以看看，点卡片看详情。" if len(cards) > 1 else "这款可以看看，点卡片看详情。"
     return spoken
 
 

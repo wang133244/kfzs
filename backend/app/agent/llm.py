@@ -154,7 +154,8 @@ def _llm_prompt(state: dict[str, Any]) -> list[dict[str, str]]:
         "只卖柱头灯、户外壁灯、太阳能庭院灯，没有的品类不要提。"
         "往好处说，但不要夸成永不损坏、终身质保。"
         "卡片已给顾客看，你根据编号已经知道用户在说哪一款。"
-        "不要复述全称，用「这款」「第一款」「那款」。不要照念依据原句。"
+        "不要复述全称。一张卡片用「这款」，多张必须用「这几款」，不要把多张说成「这款」。"
+        "也可以说「第一款」「那款」。不要照念依据原句。"
         "价格、库存、订单号必须用依据里的数字，不要编。"
         "问耐用就按防水、不锈钢、太阳能用口语说户外能用，不必报规格。"
         "没问到的型号、售价、物流时效不要主动念。不要markdown。"
@@ -168,6 +169,11 @@ def _llm_prompt(state: dict[str, Any]) -> list[dict[str, str]]:
         lines.append("对话：\n" + "\n".join(history_lines))
     if memory_bits:
         lines.append("记忆：\n" + "\n".join(memory_bits))
+    card_n = len(state.get("product_cards") or [])
+    if card_n > 1:
+        lines.append(f"将展示{card_n}张卡片，回复必须说「这几款」，不要说「这款」。")
+    elif card_n == 1:
+        lines.append("只展示1张卡片，用「这款」。")
     lines.append("依据：\n" + (evidence or "无"))
     lines.append("直接回复顾客。")
     return [

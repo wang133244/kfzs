@@ -110,6 +110,7 @@ def test_shop_prompt_sounds_like_human_clerk():
     assert "不要照念" in system or "不必照念" in system
     assert "耐用" in system
     assert "这款" in system
+    assert "这几款" in system
     assert "卡片" in system
     assert "第一款" in user or "1." in user
 
@@ -314,6 +315,18 @@ def test_humanize_swaps_full_title_for_this_one():
     assert "这款" in text or "第一款" in text or "第1款" in text
 
 
+def test_humanize_uses_these_ones_for_multiple_cards():
+    from app.core.safety import humanize_customer_text
+
+    cards = [
+        {"title": "太阳能柱头灯户外防水现代简约LED庭院灯福字方形围墙灯后现代", "price": 350},
+        {"title": "太阳能柱头灯中式庭院灯户外防水别墅大门围墙灯不锈钢景观灯", "price": 150},
+    ]
+    text = humanize_customer_text("推荐您看看这款太阳能柱头灯，装在大门很合适。", cards)
+    assert "这几款" in text
+    assert "这款" not in text
+
+
 def test_product_cards_match_recommendation_query():
     from app.agent.nodes import _build_product_cards
 
@@ -331,6 +344,10 @@ async def test_wall_lamp_recommendation_answers_with_cards():
     assert cards
     assert any("壁灯" in card["title"] or "壁灯" in card.get("category", "") for card in cards)
     assert all(card.get("cover") for card in cards)
+    text = state.get("final_response") or ""
+    if len(cards) > 1:
+        assert "这几款" in text
+        assert "这款" not in text
 
 
 OFFTOPIC_ASK = "抱歉小助手无法理解您的意思，是否需要转人工"

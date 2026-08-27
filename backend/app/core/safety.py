@@ -57,6 +57,8 @@ def soften_catalog_names(text: str, cards: list[dict] | None = None) -> str:
                 result = result.replace(piece, label)
     result = re.sub(r"(这款){2,}", "这款", result)
     result = re.sub(r"(第[1-9]款){2,}", r"\1", result)
+    if len(items) > 1:
+        result = re.sub(r"这一?款", "这几款", result)
     return result
 
 
