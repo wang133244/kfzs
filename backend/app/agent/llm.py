@@ -43,14 +43,119 @@ def _rule_intent(message: str) -> str:
 
 def _llm_client() -> ChatOpenAI:
     # OpenAI 兼容客户端：默认指向 DeepSeek，可通过 LLM_BASE_URL 替换任意兼容端点
-    return ChatOpenAI(
+    cached = getattr(_llm_client, "_cached", None)
+    key = (settings.llm_model, settings.llm_api_key, settings.llm_base_url, settings.llm_temperature)
+    if cached and cached[0] == key:
+        return cached[1]
+    client = ChatOpenAI(
         model=settings.llm_model,
         api_key=settings.llm_api_key,
         base_url=settings.llm_base_url,
         temperature=settings.llm_temperature,
-        max_tokens=280,
+        max_tokens=160,
         timeout=20,
     )
+    _llm_client._cached = (key, client)
+    return client
+
+
+def _clip(text: str, limit: int) -> str:
+    value = re.sub(r"\s+", " ", str(text or "")).strip()
+    return value[: limit - 1] + "…" if len(value) > limit else value
+
+
+def _compact_tool(result: dict[str, Any]) -> str:
+    data = result.get("data")
+    if isinstance(data, dict):
+        keep = {
+            key: data[key]
+            for key in ("order_id", "status", "price", "stock", "sku_id", "logistics_code", "task_id")
+            if key in data
+        }
+        data = keep or data
+    return f"{result.get('name')}: {_clip(json.dumps(data, ensure_ascii=False, default=str), 120)}"
+
+
+def _short_title(title: str) -> str:
+    title = (title or "").strip()
+    return title[:12] + "…" if len(title) > 14 else title
+
+
+def _evidence_for_prompt(state: dict[str, Any]) -> str:
+    # 只把工具结果和检索片段交给模型，防止模型编造事实
+    parts: list[str] = []
+    cards = state.get("product_cards") or []
+    if cards:
+        listing = []
+        for index, card in enumerate(cards[:4], start=1):
+            price = card.get("price")
+            price_text = f"{float(price):.0f}元" if price not in (None, "") else ""
+            listing.append(f"{index}.{_short_title(str(card.get('title') or ''))}{price_text}")
+        parts.append("商品：" + "；".join(listing))
+    for result in (state.get("tool_results") or [])[:2]:
+        parts.append(_compact_tool(result))
+    seen = set(parts)
+    for chunk in (state.get("retrieved_chunks") or [])[:2]:
+        clipped = _clip(chunk, 100)
+        if clipped and clipped not in seen:
+            parts.append(clipped)
+            seen.add(clipped)
+    return "\n".join(parts)
+
+
+def _llm_prompt(state: dict[str, Any]) -> list[dict[str, str]]:
+    # 组装 system/user 消息：system 限定只依据证据作答，user 携带用户消息、意图与工具依据
+    messages = state.get("messages") or []
+    last_user = str(messages[-1].get("content") or "") if messages else ""
+    evidence = _evidence_for_prompt(state)
+    memory = state.get("memory_context") or {}
+    history = memory.get("recent_messages") or messages
+    history_lines = []
+    for item in history[-4:]:
+        content = str(item.get("content") or "").strip()
+        if not content or content == last_user:
+            continue
+        role = "用户" if item.get("role") == "user" else "客服"
+        history_lines.append(f"{role}：{_clip(content, 64)}")
+        if len(history_lines) >= 3:
+            break
+    summary = _clip(str(memory.get("summary") or ""), 80)
+    long_term = memory.get("long_term") or []
+    focus = memory.get("workflow_state") or {}
+    memory_bits = []
+    if summary:
+        memory_bits.append("摘要：" + summary)
+    topic = str(focus.get("last_product_title") or focus.get("last_category") or "").strip()
+    if topic:
+        memory_bits.append("刚才在聊：" + _clip(topic, 24))
+    if focus.get("last_order_id"):
+        memory_bits.append(f"订单：{focus.get('last_order_id')}")
+    for item in long_term[:1]:
+        bit = _clip(str(item.get("content") or ""), 36)
+        if bit:
+            memory_bits.append("记忆：" + bit)
+    system = (
+        "你是星途灯具店微信客服，口语短句，最多3句约80字。"
+        "只卖柱头灯、户外壁灯、太阳能庭院灯，没有的品类不要提。"
+        "往好处说，但不要夸成永不损坏、终身质保。"
+        "不要复述全称，用「这款」「第一款」。"
+        "价格库存订单号只用依据，不要编，不要markdown。"
+        "有防水、不锈钢就说户外能用。追问时接着刚才的商品说。"
+    )
+    lines = [f"用户：{last_user}", f"意图：{state.get('intent') or 'unknown'}"]
+    resolved = str(state.get("resolved_query") or "").strip()
+    if resolved and resolved != last_user:
+        lines.append("问题：" + _clip(resolved, 80))
+    if history_lines:
+        lines.append("对话：\n" + "\n".join(history_lines))
+    if memory_bits:
+        lines.append("记忆：\n" + "\n".join(memory_bits))
+    lines.append("依据：\n" + (evidence or "无"))
+    lines.append("直接回复顾客。")
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": "\n".join(lines)},
+    ]
 
 
 def _llm_intent(message: str) -> str:
@@ -89,87 +194,6 @@ def classify_intent(message: str) -> str:
     if settings.llm_provider.lower() == "mock":
         return _rule_intent(message)
     return _llm_intent(message)
-
-
-def _short_title(title: str) -> str:
-    title = (title or "").strip()
-    return title[:16] + "…" if len(title) > 18 else title
-
-
-def _evidence_for_prompt(state: dict[str, Any]) -> str:
-    # 只把工具结果和检索片段交给模型，防止模型编造事实
-    parts: list[str] = []
-    cards = state.get("product_cards") or []
-    if cards:
-        listing = []
-        for index, card in enumerate(cards[:4], start=1):
-            price = card.get("price")
-            price_text = f"{float(price):.0f}元" if price not in (None, "") else ""
-            listing.append(f"{index}. {_short_title(str(card.get('title') or ''))} {price_text}".strip())
-        parts.append("刚才推荐的商品：\n" + "\n".join(listing))
-    for result in state.get("tool_results") or []:
-        parts.append(
-            f"{result.get('name')}: "
-            f"{json.dumps(result.get('data'), ensure_ascii=False, default=str)}"
-        )
-    parts.extend(state.get("retrieved_chunks") or [])
-    return "\n".join(parts)
-
-
-def _llm_prompt(state: dict[str, Any]) -> list[dict[str, str]]:
-    # 组装 system/user 消息：system 限定只依据证据作答，user 携带用户消息、意图与工具依据
-    messages = state.get("messages") or []
-    last_user = str(messages[-1].get("content") or "") if messages else ""
-    evidence = _evidence_for_prompt(state)
-    memory = state.get("memory_context") or {}
-    history = memory.get("recent_messages") or messages
-    history_lines = []
-    for item in history[-8:]:
-        role = "用户" if item.get("role") == "user" else "客服"
-        content = str(item.get("content") or "").strip()
-        if content:
-            history_lines.append(f"{role}：{content[:180]}")
-    summary = str(memory.get("summary") or "").strip()
-    long_term = memory.get("long_term") or []
-    focus = memory.get("workflow_state") or {}
-    memory_bits = []
-    if summary:
-        memory_bits.append(f"会话摘要：{summary[:400]}")
-    if focus.get("last_category") or focus.get("last_product_title"):
-        memory_bits.append(
-            "刚才在聊：" + str(focus.get("last_product_title") or focus.get("last_category"))
-        )
-    if focus.get("last_order_id"):
-        memory_bits.append(f"刚才的订单：{focus.get('last_order_id')}")
-    for item in long_term:
-        memory_bits.append(f"长期记忆：{item.get('content')}")
-    system = (
-        "你是星途灯具店的微信客服店员，说话要像真人：口语、短句、别客套。"
-        "本店只卖户外三类：柱头灯、户外壁灯、太阳能庭院灯。没有的品类不要主动介绍，也不要说店里有。"
-        "一次最多 3 句，大约 80 字。"
-        "不要提检索资料、说明书腔。"
-        "不要复述全称，用「这款」「刚才第一款」。"
-        "用户说「第一个」就是推荐列表第 1 件。"
-        "往好处说、别泼冷水，但不要夸成永不损坏、终身质保。"
-        "问耐不耐用：有防水、不锈钢、太阳能就说户外能用、做了防水，正常风吹雨淋没问题。"
-        "不要推脱，不要让顾客自己去翻页面或转去问别人。"
-        "价格、库存、订单号只能用依据里的数字，不要编。"
-        "不要使用 markdown。"
-        "追问时结合刚才在聊的商品，不要装失忆。"
-    )
-    user = (
-        f"用户消息：{last_user}\n"
-        f"解析后的问题：{state.get('resolved_query') or last_user}\n"
-        f"意图：{state.get('intent') or 'unknown'}\n"
-        f"最近对话：\n{chr(10).join(history_lines) or '（无）'}\n"
-        f"记忆：\n{chr(10).join(memory_bits) or '（无）'}\n\n"
-        f"依据：\n{evidence or '（无）'}\n\n"
-        "用店员口吻直接回复顾客。"
-    )
-    return [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user},
-    ]
 
 
 async def generate_chat_response(state: dict[str, Any]) -> str:

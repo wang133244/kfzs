@@ -86,6 +86,47 @@ def test_shop_prompt_sounds_like_human_clerk():
     assert "第一款" in user or "1." in user
 
 
+def test_llm_prompt_stays_compact():
+    from app.agent.llm import _llm_prompt
+
+    blob = "防水不锈钢太阳能柱头灯说明书段落" * 40
+    prompt = _llm_prompt(
+        {
+            "messages": [{"role": "user", "content": "第一个耐用吗"}],
+            "resolved_query": "第一个耐用吗",
+            "intent": "product",
+            "retrieved_chunks": [blob, blob],
+            "product_cards": [
+                {
+                    "title": "太阳能柱头灯户外庭院中式别墅围墙立柱灯自动开关智能光控新中式",
+                    "price": 110,
+                }
+            ],
+            "tool_results": [
+                {
+                    "name": "get_order",
+                    "data": {"order_id": "1001", "status": "paid", "noise": "x" * 2000},
+                }
+            ],
+            "memory_context": {
+                "recent_messages": [
+                    {"role": "user", "content": "给我推荐柱头灯"},
+                    {"role": "assistant", "content": "为您推荐：" + "长标题" * 40},
+                    {"role": "user", "content": "第一个耐用吗"},
+                ],
+                "summary": "摘要内容" * 80,
+                "long_term": [{"content": "喜欢柱头灯" * 20}],
+                "workflow_state": {"last_product_title": "太阳能柱头灯"},
+            },
+        }
+    )
+    user = prompt[1]["content"]
+    assert "解析后的问题" not in user
+    assert "noise" not in user
+    assert len(user) < 900
+    assert "刚才在聊" in user
+
+
 @pytest.mark.asyncio
 async def test_chitchat_greeting_skips_llm_and_stays_outdoor():
     from app.agent.nodes import handle_smalltalk, should_skip_polish

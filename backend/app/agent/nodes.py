@@ -92,12 +92,28 @@ def _tool_result_to_dict(result) -> dict:
     }
 
 
+def _clip_text(text: str, limit: int = 100) -> str:
+    value = re.sub(r"\s+", " ", str(text or "")).strip()
+    return value[: limit - 1] + "…" if len(value) > limit else value
+
+
+def _card_listing(cards: list[dict]) -> str:
+    items = []
+    for card in cards[:4]:
+        title = str(card.get("title") or "")[:16]
+        price = card.get("price")
+        price_text = f"{float(price):.0f}元" if price not in (None, "") else ""
+        items.append(f"{title}{price_text}".strip())
+    return "；".join(items)
+
+
 def _recommend_intro(strategy: str, listing: str) -> str:
+    # 卡片会单独展示，回复里不拼全称，避免下一轮 prompt 膨胀
     if strategy == "history":
-        return f"根据您的购买记录，为您推荐：{listing}。"
+        return "根据您的购买记录挑了几款，点卡片看详情。"
     if strategy == "random":
-        return f"为您随机挑选了几款在售商品：{listing}。"
-    return f"为您推荐以下在售商品：{listing}。"
+        return "店里这几款可以看看，点卡片看详情。"
+    return "为您推荐这几款在售商品，点卡片看详情。"
 
 
 def _build_product_cards(
@@ -116,11 +132,7 @@ def _build_product_cards(
 
 
 def _with_catalog_listing(answer: str, cards: list[dict]) -> str:
-    if not cards:
-        return answer
-    listing = "；".join(f"{card['title']} 售价 {card['price']:.0f} 元" for card in cards)
-    if listing and listing[:12] not in answer:
-        return f"{answer}\n相关在售：{listing}。"
+    # 卡片会单独展示，不把长标题再塞进回复，避免下一轮上下文膨胀
     return answer
 
 
@@ -391,7 +403,7 @@ async def handle_shipment(state: dict[str, Any]) -> dict[str, Any]:
 async def handle_product(state: dict[str, Any]) -> dict[str, Any]:
     raw_message = _last_message(state)
     message = state.get("resolved_query") or raw_message
-    answer, citations, relevance_score = await hybrid_search_with_answer(message)
+    answer, citations, relevance_score = await hybrid_search_with_answer(message, top_k=2)
     wf = state.get("memory_context", {}).get("workflow_state") or {}
     last_ids = [item for item in str(wf.get("last_product_ids") or "").split(",") if item]
     last_cards = cards_from_ids(last_ids)
@@ -408,9 +420,7 @@ async def handle_product(state: dict[str, Any]) -> dict[str, Any]:
     else:
         rec = await recommend_for_user(message, str(state.get("user_id") or ""))
         product_cards = cards_from_result(rec) if _should_attach_cards(raw_message) else []
-    listing = "；".join(
-        f"{card['title']} 售价 {card['price']:.0f} 元" for card in product_cards
-    )
+    listing = _card_listing(product_cards)
     if (answer == "暂时没有相关内容。" or not citations) and not product_cards:
         return await _offer_handoff(state, message)
     if (answer == "暂时没有相关内容。" or not citations) and product_cards:
@@ -418,7 +428,7 @@ async def handle_product(state: dict[str, Any]) -> dict[str, Any]:
         answer = _recommend_intro(intro_strategy, listing)
         citations = [{"source": "products.md", "text": listing, "score": 1.0}]
         relevance_score = max(relevance_score, 0.5)
-    chunks = [c.get("text", "") for c in citations]
+    chunks = [_clip_text(c.get("text", "")) for c in citations[:2] if c.get("text")]
     sources = sorted({c.get("source", "unknown") for c in citations})
     if listing:
         chunks.append(listing)
@@ -554,10 +564,8 @@ async def grounding_check(state: dict[str, Any]) -> dict[str, Any]:
         return {"grounding_passed": True}
     cards = state.get("product_cards") or []
     if cards:
-        listing = "；".join(
-            f"{card['title']} 售价 {float(card.get('price') or 0):.0f} 元" for card in cards
-        )
-        answer = f"为您推荐以下在售商品：{listing}。"
+        listing = _card_listing(cards)
+        answer = f"为您推荐这几款在售商品：{listing}。"
         chunks = list(state.get("retrieved_chunks") or [])
         chunks.append(listing)
         retry = check_grounding({**state, "final_response": answer, "retrieved_chunks": chunks})
