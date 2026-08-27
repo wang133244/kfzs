@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import random
+import re
 from collections import Counter
 from dataclasses import dataclass
 
@@ -37,9 +38,47 @@ class RecommendResult:
 
 
 def catalog_card_limit(message: str) -> int:
-    if any(word in message for word in ("有什么", "推荐", "哪些", "介绍")):
+    text = message or ""
+    if parse_listed_indexes(text) or any(word in text for word in ("区别", "对比", "哪个好", "哪款好")):
+        return 2
+    if any(word in text for word in ("有什么", "推荐", "哪些", "介绍")):
         return 4
     return 2
+
+
+_CN_INDEX = {
+    "一": 1,
+    "二": 2,
+    "两": 2,
+    "三": 3,
+    "四": 4,
+    "五": 5,
+    "六": 6,
+    "七": 7,
+    "八": 8,
+    "九": 9,
+    "十": 10,
+}
+
+
+def parse_listed_indexes(message: str) -> list[int]:
+    # 「第一款 / 第3个」→ 1-based 序号，用于从上一轮推荐里挑卡片
+    found: list[int] = []
+    for match in re.finditer(r"第\s*([一二两三四五六七八九十\d]+)\s*[款个盏只项]", message or ""):
+        token = match.group(1)
+        index = int(token) if token.isdigit() else _CN_INDEX.get(token)
+        if index and index not in found:
+            found.append(index)
+    return found
+
+
+def cards_from_ids(product_ids: list[str]) -> list[dict]:
+    cards = []
+    for product_id in product_ids:
+        product = find_product(product_id)
+        if product:
+            cards.append(product_to_card(product))
+    return cards
 
 
 def extract_search_keyword(message: str) -> str:

@@ -40,7 +40,7 @@ conda run -n langchain python -m uvicorn app.main:app --reload --host 127.0.0.1 
 
 接口走微信云托管 `callContainer`，**不要**把 `*.sh.run.tcloudbase.com` 配进小程序合法域名（那是测试域名，正式环境会被拒绝）。
 
-小程序默认连接云托管服务 `prod`，环境 ID 在 `utils/config.js` 的 `CLOUD_ENV`。本地调试后端时把 `USE_CLOUD` 改为 `false`。
+小程序默认用 `callContainer` 连接云托管服务 `prod`。客服对话优先走 WebSocket 流式（`connectContainer` / `ws://`），连不上时回退 HTTP。`CLOUD_ENV` 是云开发环境（存储），`CLOUD_RUN_ENV` 是云托管环境 ID。本地调试后端时把 `USE_CLOUD` 改为 `false`。
 
 正式使用前：
 1. 云托管控制台确认服务名是 `prod`，并已发布最新版本。

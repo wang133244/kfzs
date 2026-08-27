@@ -2,7 +2,7 @@
   <view class="night">
     <view class="glow"></view>
     <view class="logo-wrap">
-      <view class="logo">灯</view>
+      <image class="logo" src="/assets/xingtu-logo.jpg" mode="aspectFit" />
     </view>
     <view class="brand-en">XINGTU LIGHTING</view>
     <view class="title">星途户外照明</view>

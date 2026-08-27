@@ -1,5 +1,7 @@
 const auth = require('../../utils/auth')
 const api = require('../../utils/request')
+const media = require('../../utils/media')
+const brand = require('../../utils/brand')
 
 function statusHint(status, canChat) {
   if (status === 'waiting') return '用户已转人工，可以接入回复'
@@ -11,7 +13,9 @@ function statusHint(status, canChat) {
 Page({
   data: {
     username: '',
-    avatar: '/assets/default-avatar.png',
+    avatar: brand.DEFAULT_AVATAR,
+    staffAvatar: brand.DEFAULT_AVATAR,
+    botAvatar: brand.LOGO,
     messages: [],
     draft: '',
     sending: false,
@@ -31,9 +35,24 @@ Page({
     wx.setNavigationBarTitle({ title: username })
     this.setData({
       username,
-      avatar: auth.resolveMediaUrl(avatar),
+      avatar: brand.DEFAULT_AVATAR,
+      staffAvatar: brand.DEFAULT_AVATAR,
+      botAvatar: brand.LOGO,
       canChat,
       statusHint: statusHint(status, canChat)
+    })
+    this.loadAvatars(avatar)
+  },
+
+  async loadAvatars(customerAvatar) {
+    const [avatar, staffAvatar] = await Promise.all([
+      media.loadAvatar(customerAvatar || ''),
+      media.loadAvatar(auth.getAvatar())
+    ])
+    this.setData({
+      avatar,
+      staffAvatar,
+      botAvatar: brand.LOGO
     })
   },
 
@@ -65,10 +84,10 @@ Page({
         this.sessionId = row.session_id || this.sessionId
         this.setData({
           username: row.username || this.data.username,
-          avatar: auth.resolveMediaUrl(row.avatar_url),
           canChat: Boolean(row.can_chat),
           statusHint: statusHint(row.handoff_status, row.can_chat)
         })
+        this.loadAvatars(row.avatar_url)
         wx.setNavigationBarTitle({ title: row.username || this.data.username })
       }
       if (!this.sessionId) {

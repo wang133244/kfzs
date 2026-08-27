@@ -1,18 +1,19 @@
 <view class="page">
-  <view class="toolbar" style="padding-top: {{statusBarHeight}}px">
-    <view>
-      <view class="toolbar-kicker">XINGTU</view>
-      <text class="toolbar-title">照明客服</text>
-    </view>
-    <view class="toolbar-actions">
-      <text class="link" bindtap="onClear">清空</text>
-      <text class="link" bindtap="onLogout">退出</text>
+  <view class="toolbar" style="padding-top: {{statusBarHeight}}px; padding-right: {{capsuleGap}}px;">
+    <view class="toolbar-inner" style="height: {{navBarHeight}}px;">
+      <view class="toolbar-brand">
+        <view class="toolbar-kicker">XINGTU</view>
+        <text class="toolbar-title">照明客服</text>
+      </view>
+      <view class="toolbar-actions">
+        <view class="link" bindtap="onClear">清空</view>
+      </view>
     </view>
   </view>
 
   <scroll-view class="list" scroll-y scroll-into-view="{{scrollTo}}" scroll-with-animation>
     <view wx:if="{{!messages.length}}" class="empty">
-      <view class="lamp">灯</view>
+      <image class="lamp" src="/assets/xingtu-logo.jpg" mode="aspectFit" />
       <text class="empty-title">星途照明客服</text>
       <text class="empty-hint">可以问问柱头灯、壁灯，或查一下订单</text>
     </view>
@@ -22,10 +23,20 @@
       wx:key="id"
       class="row {{item.role === 'user' ? 'row-user' : 'row-bot'}}"
     >
-      <view class="avatar {{item.role === 'user' ? '' : 'avatar-bot'}}">{{item.role === 'user' ? '我' : '灯'}}</view>
+      <view class="avatar">
+        <image
+          class="avatar-img"
+          src="{{item.role === 'user' ? myAvatar : botAvatar}}"
+          mode="aspectFill"
+          binderror="onAvatarError"
+        />
+      </view>
       <view class="bubble-wrap">
-        <view class="bubble">{{item.content}}</view>
-        <view wx:if="{{item.product_cards.length}}" class="cards">
+        <view class="meta" wx:if="{{item.role !== 'user'}}">
+          <text class="tag {{item.role === 'staff' ? 'tag-human' : 'tag-ai'}}">{{item.role === 'staff' ? '人工客服' : '智能客服'}}</text>
+        </view>
+        <view class="bubble {{item.streaming && !item.content ? 'typing' : ''}}">{{item.content || (item.streaming ? '客服正在回复…' : '')}}</view>
+        <view wx:if="{{item.product_cards && item.product_cards.length}}" class="cards">
           <view
             wx:for="{{item.product_cards}}"
             wx:for-item="card"
@@ -45,10 +56,6 @@
       </view>
     </view>
 
-    <view wx:if="{{sending}}" class="row row-bot">
-      <view class="avatar avatar-bot">灯</view>
-      <view class="bubble typing">客服正在回复…</view>
-    </view>
     <view id="bottom" class="bottom-anchor"></view>
   </scroll-view>
 

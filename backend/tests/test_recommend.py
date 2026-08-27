@@ -1,6 +1,6 @@
 import random
 
-from app.core.recommend import has_explicit_need, recommend_products
+from app.core.recommend import catalog_card_limit, has_explicit_need, parse_listed_indexes, recommend_products
 
 
 def test_need_beats_purchase_history():
@@ -44,6 +44,12 @@ def test_vague_recommend_is_not_explicit_need():
     assert has_explicit_need("给我推荐一下") is False
     assert has_explicit_need("推荐壁灯") is True
     assert has_explicit_need("柱头灯多少钱") is True
+
+
+def test_compare_followup_is_not_a_four_card_catalog():
+    assert catalog_card_limit("第一款和第三款有什么区别") == 2
+    assert parse_listed_indexes("第一款和第三款有什么区别") == [1, 3]
+    assert parse_listed_indexes("第二个怎么样") == [2]
 
 
 def test_chat_recommends_from_purchase_history(api_client):

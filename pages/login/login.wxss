@@ -8,7 +8,7 @@
 .night {
   position: relative;
   margin: 0 -40rpx 48rpx;
-  padding: 160rpx 48rpx 72rpx;
+  padding: 88rpx 48rpx 56rpx;
   overflow: hidden;
   background: linear-gradient(180deg, #0e1628 0%, #1b2a4a 72%, #243656 100%);
   display: flex;
@@ -32,17 +32,11 @@
 }
 
 .logo {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 36rpx;
-  background: linear-gradient(180deg, #f6e7b8 0%, #c4a35a 100%);
-  color: #1b2a4a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 48rpx;
-  font-weight: 700;
-  box-shadow: 0 16rpx 48rpx rgba(196, 163, 90, 0.45);
+  width: 280rpx;
+  height: 280rpx;
+  border-radius: 28rpx;
+  background: #000;
+  box-shadow: 0 16rpx 48rpx rgba(196, 163, 90, 0.28);
 }
 
 .brand-en {

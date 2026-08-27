@@ -52,30 +52,53 @@
 }
 
 .avatar {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 12rpx;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
   background: #e6dfd2;
   flex-shrink: 0;
 }
 
-.avatar-staff {
-  background: #1b2a4a;
-  color: #e0c36a;
-  font-size: 22rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.avatar-img {
+  width: 72rpx;
+  height: 72rpx;
+  display: block;
 }
 
 .bubble-wrap {
   max-width: 72%;
 }
 
-.who {
-  margin-bottom: 6rpx;
+.meta {
+  margin-bottom: 8rpx;
+}
+
+.row-mine .meta {
+  text-align: right;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
   font-size: 20rpx;
-  color: #a8a29e;
+  line-height: 1.5;
+}
+
+.tag-ai {
+  background: #f6e7b8;
+  color: #1b2a4a;
+}
+
+.tag-human {
+  background: #1b2a4a;
+  color: #e0c36a;
+}
+
+.tag-user {
+  background: #e6dfd2;
+  color: #57534e;
 }
 
 .bubble {

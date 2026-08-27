@@ -370,6 +370,27 @@ async def test_followup_uses_last_product_memory():
 
 
 @pytest.mark.asyncio
+async def test_followup_compare_only_shows_named_cards():
+    session_id = "test-compare-ordinals"
+    first = await run_agent(
+        [{"role": "user", "content": "给我推荐一下柱头灯"}],
+        "1",
+        session_id,
+    )
+    cards = first.get("product_cards") or []
+    assert len(cards) >= 3
+    first_id = cards[0]["product_id"]
+    third_id = cards[2]["product_id"]
+    second = await run_agent(
+        [{"role": "user", "content": "第一款和第三款有什么区别"}],
+        "1",
+        session_id,
+    )
+    shown = second.get("product_cards") or []
+    assert [card["product_id"] for card in shown] == [first_id, third_id]
+
+
+@pytest.mark.asyncio
 async def test_recall_last_product():
     session_id = "test-memory-recall"
     await run_agent(

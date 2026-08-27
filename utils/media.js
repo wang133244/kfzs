@@ -35,7 +35,12 @@ function load(url) {
   }
 
   const path = toContainerPath(value)
-  if (!path) return Promise.resolve('')
+  if (!path) {
+    if (value.indexOf('http://') === 0 || value.indexOf('https://') === 0) {
+      return Promise.resolve(value)
+    }
+    return Promise.resolve('')
+  }
   if (pending[path]) return pending[path]
 
   const localPath = wx.env.USER_DATA_PATH + '/' + fileName(path)
@@ -67,6 +72,14 @@ function load(url) {
   return pending[path]
 }
 
+function loadAvatar(url) {
+  const fallback = '/assets/default-avatar.png'
+  const value = String(url || '').trim()
+  if (!value) return Promise.resolve(fallback)
+  if (value.indexOf('/assets/') === 0) return Promise.resolve(value)
+  return load(value).then((src) => src || fallback)
+}
+
 function hydrateProduct(product) {
   if (!product) return Promise.resolve(product)
   const gallery = product.gallery || []
@@ -80,5 +93,6 @@ function hydrateProduct(product) {
 
 module.exports = {
   load,
+  loadAvatar,
   hydrateProduct
 }

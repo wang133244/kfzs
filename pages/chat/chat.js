@@ -3,6 +3,8 @@ const api = require('../../utils/request')
 const userStore = require('../../utils/userStore')
 const { INTRO_MESSAGE } = require('../../utils/config')
 const media = require('../../utils/media')
+const brand = require('../../utils/brand')
+const chatSocket = require('../../utils/chat-socket')
 
 function hydrateCards(cards) {
   return Promise.all((cards || []).map((card) => media.hydrateProduct(card)))
@@ -15,18 +17,47 @@ Page({
     sending: false,
     sessionId: null,
     scrollTo: '',
-    statusBarHeight: 20
+    statusBarHeight: 20,
+    navBarHeight: 44,
+    capsuleGap: 96,
+    myAvatar: brand.DEFAULT_AVATAR,
+    botAvatar: brand.LOGO
   },
 
   onLoad() {
+    this.fitCapsule()
+  },
+
+  fitCapsule() {
     try {
       const sys = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync()
-      this.setData({ statusBarHeight: sys.statusBarHeight || 20 })
+      const statusBarHeight = sys.statusBarHeight || 20
+      const windowWidth = sys.windowWidth || 375
+      let menu = { width: 87, height: 32, left: windowWidth - 97, top: statusBarHeight + 4 }
+      try {
+        menu = wx.getMenuButtonBoundingClientRect() || menu
+      } catch (err) {}
+      const gap = Math.max((menu.top || statusBarHeight) - statusBarHeight, 4)
+      const navBarHeight = (menu.height || 32) + gap * 2
+      const capsuleGap = Math.max(windowWidth - (menu.left || windowWidth) + 12, 96)
+      this.setData({ statusBarHeight, navBarHeight, capsuleGap })
     } catch (err) {}
+  },
+
+  onAvatarError() {
+    const patch = {}
+    if ((this.data.myAvatar || '').indexOf('/assets/') !== 0) {
+      patch.myAvatar = brand.DEFAULT_AVATAR
+    }
+    if ((this.data.botAvatar || '').indexOf('/assets/') !== 0) {
+      patch.botAvatar = brand.LOGO
+    }
+    if (Object.keys(patch).length) this.setData(patch)
   },
 
   async onShow() {
     if (!auth.requireCustomer()) return
+    await this.refreshAvatar()
     await this.restoreOrIntro()
     const ask = getApp().globalData.pendingAsk
     if (ask) {
@@ -34,6 +65,18 @@ Page({
       this.sendText(ask)
     }
     this._poll = setInterval(() => this.pollHistory(), 4000)
+    chatSocket.setPushHandler((data) => this.onSocketPush(data))
+  },
+
+  async refreshAvatar() {
+    try {
+      const me = await api.getMe()
+      auth.saveProfile(me)
+    } catch (err) {}
+    this.setData({
+      myAvatar: await media.loadAvatar(auth.getAvatar()),
+      botAvatar: brand.LOGO
+    })
   },
 
   onHide() {
@@ -41,6 +84,8 @@ Page({
       clearInterval(this._poll)
       this._poll = null
     }
+    chatSocket.setPushHandler(null)
+    if (!this.data.sending) chatSocket.close()
   },
 
   onUnload() {
@@ -48,6 +93,8 @@ Page({
       clearInterval(this._poll)
       this._poll = null
     }
+    chatSocket.setPushHandler(null)
+    chatSocket.close()
   },
 
   async pollHistory() {
@@ -160,6 +207,88 @@ Page({
     this.sendText(text)
   },
 
+  patchMessage(id, patch) {
+    const messages = (this.data.messages || []).map((item) =>
+      item.id === id ? Object.assign({}, item, patch) : item
+    )
+    this.setData({ messages, scrollTo: 'bottom' })
+  },
+
+  appendDelta(id, delta) {
+    if (!delta) return
+    this._deltaBuf = (this._deltaBuf || '') + delta
+    if (this._deltaTimer) return
+    this._deltaTimer = setTimeout(() => {
+      this._deltaTimer = null
+      const chunk = this._deltaBuf
+      this._deltaBuf = ''
+      if (!chunk) return
+      const current = (this.data.messages || []).find((item) => item.id === id)
+      const prev = current ? current.content || '' : ''
+      this.patchMessage(id, { content: prev + chunk, streaming: true })
+    }, 48)
+  },
+
+  flushDelta(id) {
+    if (this._deltaTimer) {
+      clearTimeout(this._deltaTimer)
+      this._deltaTimer = null
+    }
+    const chunk = this._deltaBuf || ''
+    this._deltaBuf = ''
+    if (!chunk) return
+    const current = (this.data.messages || []).find((item) => item.id === id)
+    const prev = current ? current.content || '' : ''
+    this.patchMessage(id, { content: prev + chunk })
+  },
+
+  async finishStream(id, result) {
+    this.flushDelta(id)
+    const cards = await hydrateCards(result.product_cards)
+    this.patchMessage(id, {
+      id: 'a-' + result.message_id,
+      content: result.response || '',
+      product_cards: cards,
+      streaming: false
+    })
+    this.setData({
+      sessionId: result.session_id || this.data.sessionId,
+      sending: false,
+      scrollTo: 'bottom'
+    })
+    this.cacheChat()
+  },
+
+  failStream(id, err) {
+    this.flushDelta(id)
+    this.patchMessage(id, {
+      content: (err && err.message) || '请求失败，请稍后重试',
+      streaming: false
+    })
+    this.setData({ sending: false, scrollTo: 'bottom' })
+    this.cacheChat()
+  },
+
+  async onSocketPush(data) {
+    if (!data || data.type !== 'review_reply' || this.data.sending) return
+    const content = data.response || ''
+    if (!content) return
+    const messages = (this.data.messages || []).concat([
+      {
+        id: 'p-' + Date.now(),
+        role: 'staff',
+        content,
+        product_cards: await hydrateCards(data.product_cards)
+      }
+    ])
+    this.setData({
+      sessionId: data.session_id || this.data.sessionId,
+      messages,
+      scrollTo: 'bottom'
+    })
+    this.cacheChat()
+  },
+
   async sendText(text) {
     const userMsg = {
       id: 'u-' + Date.now(),
@@ -167,41 +296,48 @@ Page({
       content: text,
       product_cards: []
     }
+    const streamId = 's-' + Date.now()
+    this._deltaBuf = ''
+    if (this._deltaTimer) {
+      clearTimeout(this._deltaTimer)
+      this._deltaTimer = null
+    }
     this.setData({
       sending: true,
-      messages: this.data.messages.concat([userMsg]),
+      messages: this.data.messages.concat([
+        userMsg,
+        {
+          id: streamId,
+          role: 'assistant',
+          content: '',
+          product_cards: [],
+          streaming: true
+        }
+      ]),
       scrollTo: 'bottom'
     })
     this.cacheChat()
+    const cached = userStore.getChat() || {}
+    const sessionId = this.data.sessionId || cached.sessionId || null
     try {
-      const cached = userStore.getChat() || {}
-      const sessionId = this.data.sessionId || cached.sessionId || null
-      const result = await api.chat(sessionId, text)
-      const assistant = {
-        id: 'a-' + result.message_id,
-        role: 'assistant',
-        content: result.response || '',
-        product_cards: await hydrateCards(result.product_cards)
-      }
-      this.setData({
-        sessionId: result.session_id,
-        messages: this.data.messages.concat([assistant]),
-        sending: false,
-        scrollTo: 'bottom'
+      const result = await chatSocket.ask({
+        sessionId,
+        message: text,
+        onDelta: (delta) => this.appendDelta(streamId, delta)
       })
-      this.cacheChat()
+      await this.finishStream(streamId, result)
     } catch (err) {
-      this.setData({
-        sending: false,
-        messages: this.data.messages.concat([{
-          id: 'e-' + Date.now(),
-          role: 'assistant',
-          content: err.message || '请求失败，请稍后重试',
-          product_cards: []
-        }]),
-        scrollTo: 'bottom'
-      })
-      this.cacheChat()
+      if (err && err.fallback) {
+        try {
+          const result = await api.chat(sessionId, text)
+          await this.finishStream(streamId, result)
+          return
+        } catch (httpErr) {
+          this.failStream(streamId, httpErr)
+          return
+        }
+      }
+      this.failStream(streamId, err)
     }
   },
 
@@ -224,21 +360,6 @@ Page({
     } catch (err) {
       wx.showToast({ title: err.message || '清空失败', icon: 'none' })
     }
-  },
-
-  onLogout() {
-    wx.showModal({
-      title: '退出登录',
-      content: '退出后下次需要重新登录。聊天记录和购物车会按账号保存。',
-      confirmText: '退出',
-      confirmColor: '#e11d48',
-      success: (res) => {
-        if (!res.confirm) return
-        auth.clearAuth()
-        auth.markManualLogout()
-        wx.reLaunch({ url: '/pages/login/login' })
-      }
-    })
   },
 
   openProduct(e) {

@@ -12,7 +12,7 @@ from ..core.intent_router import IntentRouter, Intent, NextStep
 from ..core.tool_registry import tool_executor, ACTION_TO_TOOL, SLOT_LABELS
 from ..core.hybrid_rag import hybrid_search_with_answer
 from ..config import settings
-from ..core.recommend import cards_from_result, recommend_for_user, recommend_products
+from ..core.recommend import cards_from_ids, cards_from_result, parse_listed_indexes, recommend_for_user, recommend_products
 from ..core.memory import expand_query, extract_category, memory_service
 from ..core.safety import mask_sensitive, validate_customer_answer, humanize_customer_text
 
@@ -165,6 +165,9 @@ async def _remember_product_focus(state: dict[str, Any], message: str, cards: li
         last_category=category,
         last_product_title=str(card.get("title") or ""),
         last_product_id=str(card.get("product_id") or ""),
+        last_product_ids=",".join(
+            str(item.get("product_id") or "") for item in cards if item.get("product_id")
+        ),
     )
     if category:
         await memory_service.remember_interest(str(state.get("user_id") or ""), category)
@@ -386,17 +389,33 @@ async def handle_shipment(state: dict[str, Any]) -> dict[str, Any]:
 
 
 async def handle_product(state: dict[str, Any]) -> dict[str, Any]:
-    message = state.get("resolved_query") or _last_message(state)
+    raw_message = _last_message(state)
+    message = state.get("resolved_query") or raw_message
     answer, citations, relevance_score = await hybrid_search_with_answer(message)
-    rec = await recommend_for_user(message, str(state.get("user_id") or ""))
-    product_cards = cards_from_result(rec) if _should_attach_cards(message) else []
+    wf = state.get("memory_context", {}).get("workflow_state") or {}
+    last_ids = [item for item in str(wf.get("last_product_ids") or "").split(",") if item]
+    last_cards = cards_from_ids(last_ids)
+    indexes = parse_listed_indexes(raw_message)
+    picked = []
+    for index in indexes:
+        if 1 <= index <= len(last_cards):
+            picked.append(last_cards[index - 1])
+    rec = None
+    keep_last_ids = False
+    if picked:
+        product_cards = picked
+        keep_last_ids = True
+    else:
+        rec = await recommend_for_user(message, str(state.get("user_id") or ""))
+        product_cards = cards_from_result(rec) if _should_attach_cards(raw_message) else []
     listing = "；".join(
         f"{card['title']} 售价 {card['price']:.0f} 元" for card in product_cards
     )
     if (answer == "暂时没有相关内容。" or not citations) and not product_cards:
         return await _offer_handoff(state, message)
     if (answer == "暂时没有相关内容。" or not citations) and product_cards:
-        answer = _recommend_intro(rec.strategy, listing)
+        intro_strategy = rec.strategy if rec is not None else "need"
+        answer = _recommend_intro(intro_strategy, listing)
         citations = [{"source": "products.md", "text": listing, "score": 1.0}]
         relevance_score = max(relevance_score, 0.5)
     chunks = [c.get("text", "") for c in citations]
@@ -406,7 +425,10 @@ async def handle_product(state: dict[str, Any]) -> dict[str, Any]:
     # 已命中在售商品时直接回复并附卡片，不再因低相关把推荐转审核
     if relevance_score < settings.relevance_threshold and not product_cards:
         return await _offer_handoff(state, message)
-    await _remember_product_focus(state, message, product_cards)
+    if keep_last_ids:
+        await _remember_product_focus(state, raw_message, last_cards)
+    else:
+        await _remember_product_focus(state, message, product_cards)
     reply = _with_catalog_listing(answer, product_cards)
     return {
         "product_query": message,

@@ -13,10 +13,22 @@
       wx:key="id"
       class="row {{item.mine ? 'row-mine' : 'row-other'}}"
     >
-      <image wx:if="{{!item.mine}}" class="avatar" src="{{item.role === 'assistant' ? '/assets/default-avatar.png' : avatar}}" mode="aspectFill" />
-      <view wx:if="{{item.mine}}" class="avatar avatar-staff">客</view>
+      <view wx:if="{{!item.mine}}" class="avatar">
+        <image
+          class="avatar-img"
+          src="{{item.role === 'assistant' ? botAvatar : avatar}}"
+          mode="aspectFill"
+        />
+      </view>
+      <view wx:if="{{item.mine}}" class="avatar">
+        <image class="avatar-img" src="{{staffAvatar}}" mode="aspectFill" />
+      </view>
       <view class="bubble-wrap">
-        <view class="who" wx:if="{{!item.mine}}">{{item.role === 'assistant' ? '智能客服' : username}}</view>
+        <view class="meta">
+          <text wx:if="{{item.mine}}" class="tag tag-human">人工客服</text>
+          <text wx:elif="{{item.role === 'assistant'}}" class="tag tag-ai">智能客服</text>
+          <text wx:else class="tag tag-user">{{username}}</text>
+        </view>
         <view class="bubble">{{item.content}}</view>
       </view>
     </view>

@@ -6,12 +6,24 @@
 }
 
 .toolbar {
+  flex-shrink: 0;
+  z-index: 20;
+  padding: 0 28rpx 0 28rpx;
+  background: #1b2a4a;
+  color: #fffcf7;
+  box-sizing: border-box;
+}
+
+.toolbar-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12rpx 28rpx 18rpx;
-  background: #1b2a4a;
-  color: #fffcf7;
+  min-width: 0;
+}
+
+.toolbar-brand {
+  min-width: 0;
+  flex: 1;
 }
 
 .toolbar-kicker {
@@ -27,11 +39,15 @@
 
 .toolbar-actions {
   display: flex;
-  gap: 28rpx;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8rpx;
 }
 
 .link {
+  padding: 8rpx 16rpx;
   font-size: 24rpx;
+  line-height: 1.2;
   color: #e0c36a;
 }
 
@@ -54,18 +70,28 @@
 }
 
 .lamp {
-  width: 96rpx;
-  height: 96rpx;
+  width: 160rpx;
+  height: 160rpx;
   margin-bottom: 12rpx;
   border-radius: 28rpx;
-  background: linear-gradient(180deg, #f6e7b8, #c4a35a);
-  color: #1b2a4a;
-  font-size: 36rpx;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 12rpx 32rpx rgba(196, 163, 90, 0.35);
+  background: #000;
+  box-shadow: 0 12rpx 32rpx rgba(196, 163, 90, 0.28);
+}
+
+.avatar {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #e6dfd2;
+  border: 1rpx solid #e6dfd2;
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 72rpx;
+  height: 72rpx;
+  display: block;
 }
 
 .empty-title {
@@ -89,35 +115,38 @@
   flex-direction: row-reverse;
 }
 
-.avatar {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 20rpx;
-  background: #fff;
-  border: 1rpx solid #e6dfd2;
-  color: #1b2a4a;
-  font-size: 22rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.avatar-bot {
-  background: linear-gradient(180deg, #f6e7b8, #c4a35a);
-  border: none;
-  color: #1b2a4a;
-  font-weight: 700;
-}
-
 .row-user .avatar {
-  background: #1b2a4a;
-  border-color: #1b2a4a;
-  color: #e0c36a;
+  border-color: #e6dfd2;
 }
 
 .bubble-wrap {
   max-width: 72%;
+}
+
+.meta {
+  margin-bottom: 8rpx;
+}
+
+.row-user .meta {
+  text-align: right;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 20rpx;
+  line-height: 1.5;
+}
+
+.tag-ai {
+  background: #f6e7b8;
+  color: #1b2a4a;
+}
+
+.tag-human {
+  background: #1b2a4a;
+  color: #e0c36a;
 }
 
 .bubble {
