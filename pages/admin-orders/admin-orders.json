@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "个人中心",
+  "navigationBarTitleText": "用户订单",
   "usingComponents": {
     "admin-tabbar": "/components/admin-tabbar/admin-tabbar"
   }

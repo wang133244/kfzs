@@ -1,0 +1,38 @@
+<view class="page">
+  <view class="hint-bar">
+    <text class="hint">{{statusHint}}</text>
+    <text wx:if="{{canChat}}" class="close" bindtap="onClose">结束人工</text>
+  </view>
+
+  <scroll-view class="list" scroll-y scroll-into-view="{{scrollTo}}" scroll-with-animation>
+    <view wx:if="{{loading}}" class="empty">加载中…</view>
+    <view wx:elif="{{!messages.length}}" class="empty">暂无对话记录</view>
+
+    <view
+      wx:for="{{messages}}"
+      wx:key="id"
+      class="row {{item.mine ? 'row-mine' : 'row-other'}}"
+    >
+      <image wx:if="{{!item.mine}}" class="avatar" src="{{item.role === 'assistant' ? '/assets/default-avatar.png' : avatar}}" mode="aspectFill" />
+      <view wx:if="{{item.mine}}" class="avatar avatar-staff">客</view>
+      <view class="bubble-wrap">
+        <view class="who" wx:if="{{!item.mine}}">{{item.role === 'assistant' ? '智能客服' : username}}</view>
+        <view class="bubble">{{item.content}}</view>
+      </view>
+    </view>
+    <view id="bottom" class="bottom-anchor"></view>
+  </scroll-view>
+
+  <view class="composer safe-bottom">
+    <input
+      class="input"
+      value="{{draft}}"
+      disabled="{{!canChat}}"
+      confirm-type="send"
+      placeholder="{{canChat ? '回复顾客' : '用户转人工后才能发送'}}"
+      bindinput="onDraft"
+      bindconfirm="onSend"
+    />
+    <button class="send" disabled="{{sending || !draft || !canChat}}" bindtap="onSend">发送</button>
+  </view>
+</view>

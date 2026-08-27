@@ -282,6 +282,37 @@ class HandoffSessionOut(BaseModel):
     created_at: datetime
     last_message: str = ""
     last_role: str = ""
+    avatar_url: str = ""
+    user_id: int | None = None
+    can_chat: bool = False
+
+
+class AdminCustomerOut(BaseModel):
+    user_id: int
+    username: str
+    avatar_url: str = ""
+    session_id: str | None = None
+    handoff_status: str = "none"
+    last_message: str = ""
+    can_chat: bool = False
+
+
+class AdminOrderOut(BaseModel):
+    order_id: str
+    customer: str
+    display_name: str
+    product: str
+    amount: float
+    status: str
+    created_at: datetime
+    user_id: int | None = None
+
+    @field_validator("amount", mode="before")
+    @classmethod
+    def _amount_float(cls, value: object) -> object:
+        if isinstance(value, Decimal):
+            return float(value)
+        return value
 
 
 # ---- 下单（Checkout）请求/响应模型 ----

@@ -4,15 +4,17 @@ import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agent.graph import get_avg_latency
 from ..config import settings
 from ..db import get_db
-from ..models import ChatSession, HumanTask, InventoryAlert, Message, User
+from ..models import ChatSession, HumanTask, InventoryAlert, Message, Order, User
 from ..core.ws_manager import ws_manager
 from ..schemas import (
+    AdminCustomerOut,
+    AdminOrderOut,
     HumanTaskOut,
     InventoryAlertOut,
     MessageOut,
@@ -213,3 +215,84 @@ async def inventory_alerts(
     # 库存预警列表，按创建时间倒序
     stmt = select(InventoryAlert).order_by(InventoryAlert.created_at.desc())
     return (await db.scalars(stmt)).all()
+
+
+@router.get("/customers", response_model=list[AdminCustomerOut])
+async def list_customers(
+    user: User = Depends(get_current_staff),
+    db: AsyncSession = Depends(get_db),
+) -> list[AdminCustomerOut]:
+    customers = list(
+        await db.scalars(select(User).where(User.role == "customer").order_by(User.created_at.desc()))
+    )
+    result: list[AdminCustomerOut] = []
+    for customer in customers:
+        session = (
+            await db.scalars(
+                select(ChatSession)
+                .where(ChatSession.user_id == customer.id)
+                .order_by(ChatSession.created_at.desc())
+            )
+        ).first()
+        last_message = ""
+        status = "none"
+        session_id = None
+        if session is not None:
+            session_id = session.id
+            status = session.handoff_status or "none"
+            last = (
+                await db.scalars(
+                    select(Message).where(Message.session_id == session.id).order_by(Message.id.desc())
+                )
+            ).first()
+            last_message = (last.content or "")[:60] if last else ""
+        result.append(
+            AdminCustomerOut(
+                user_id=customer.id,
+                username=customer.username,
+                avatar_url=customer.avatar_url or "",
+                session_id=session_id,
+                handoff_status=status,
+                last_message=last_message,
+                can_chat=status in ("waiting", "active"),
+            )
+        )
+    result.sort(key=lambda item: (0 if item.can_chat else 1, item.username))
+    return result
+
+
+@router.get("/orders", response_model=list[AdminOrderOut])
+async def list_admin_orders(
+    q: str | None = None,
+    user: User = Depends(get_current_staff),
+    db: AsyncSession = Depends(get_db),
+) -> list[AdminOrderOut]:
+    stmt = (
+        select(Order)
+        .outerjoin(User, User.id == Order.user_id)
+        .order_by(Order.created_at.desc())
+    )
+    keyword = (q or "").strip()
+    if keyword:
+        like = f"%{keyword}%"
+        stmt = stmt.where(
+            or_(
+                Order.customer.like(like),
+                Order.order_id.like(like),
+                User.username.like(like),
+            )
+        )
+    orders = list(await db.scalars(stmt))
+    return [
+        AdminOrderOut(
+            order_id=order.order_id,
+            customer=order.customer,
+            display_name=f"{order.customer} {order.order_id}",
+            product=order.product,
+            amount=order.amount,
+            status=order.status,
+            created_at=order.created_at,
+            user_id=order.user_id,
+        )
+        for order in orders
+    ]

@@ -10,10 +10,14 @@ Page({
     keyword: '',
     products: [],
     loading: false,
-    error: ''
+    error: '',
+    isAdmin: false
   },
 
   onShow() {
+    const isAdmin = auth.isAdmin()
+    this.setData({ isAdmin })
+    auth.syncTabBar()
     this.loadAll()
   },
 
@@ -83,6 +87,10 @@ Page({
   },
 
   addCart(e) {
+    if (this.data.isAdmin) {
+      wx.showToast({ title: '管理员请在订单页查看购买记录', icon: 'none' })
+      return
+    }
     if (!auth.requireLoginForAction('请先登录再加购')) return
     const id = e.currentTarget.dataset.id
     const product = this.data.products.find((item) => item.product_id === id)

@@ -8,7 +8,10 @@
     "pages/wallet/wallet",
     "pages/orders/orders",
     "pages/detail/detail",
-    "pages/webview/webview"
+    "pages/webview/webview",
+    "pages/admin-inbox/admin-inbox",
+    "pages/admin-chat/admin-chat",
+    "pages/admin-orders/admin-orders"
   ],
   "window": {
     "navigationBarBackgroundColor": "#1B2A4A",

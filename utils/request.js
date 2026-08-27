@@ -206,6 +206,32 @@ function saveCart(items) {
   })
 }
 
+function listAdminCustomers() {
+  return request('/api/v1/admin/customers')
+}
+
+function listAdminOrders(q) {
+  const suffix = q ? '?q=' + encodeURIComponent(q) : ''
+  return request('/api/v1/admin/orders' + suffix)
+}
+
+function getAdminSessionMessages(sessionId) {
+  return request('/api/v1/admin/human-chat/' + sessionId + '/messages')
+}
+
+function replyAdminSession(sessionId, content) {
+  return request('/api/v1/admin/human-chat/' + sessionId + '/reply', {
+    method: 'POST',
+    data: { content }
+  })
+}
+
+function closeAdminSession(sessionId) {
+  return request('/api/v1/admin/human-chat/' + sessionId + '/close', {
+    method: 'POST'
+  })
+}
+
 function uploadAvatar(filePath) {
   if (USE_CLOUD) {
     const { CLOUD_ENV } = require('./config')
@@ -280,5 +306,10 @@ module.exports = {
   deleteSession,
   listShopCategories,
   listShopProducts,
-  getShopProduct
+  getShopProduct,
+  listAdminCustomers,
+  listAdminOrders,
+  getAdminSessionMessages,
+  replyAdminSession,
+  closeAdminSession
 }

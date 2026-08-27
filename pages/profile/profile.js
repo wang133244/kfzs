@@ -10,12 +10,14 @@ Page({
     loginType: '',
     editing: false,
     draftName: '',
-    saving: false
+    saving: false,
+    isAdmin: false
   },
 
   onShow() {
-    if (!auth.requireCustomer()) return
+    if (!auth.requireLogin()) return
     this._pageAlive = true
+    this.setData({ isAdmin: auth.isAdmin() })
     this.syncLocal()
     this.refresh()
   },

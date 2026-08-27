@@ -129,11 +129,58 @@ function clearAuth() {
   wx.removeStorageSync(USER_ID_KEY)
 }
 
+function isAdmin() {
+  const role = getRole()
+  return role === 'admin' || role === 'staff'
+}
+
+function syncTabBar() {
+  if (isAdmin()) {
+    wx.hideTabBar({ fail() {} })
+  } else {
+    wx.showTabBar({ fail() {} })
+  }
+}
+
+function enterHome(role) {
+  const nextRole = role || getRole()
+  if (nextRole === 'admin' || nextRole === 'staff') {
+    wx.hideTabBar({ fail() {} })
+    wx.reLaunch({ url: '/pages/admin-inbox/admin-inbox' })
+    return
+  }
+  wx.showTabBar({ fail() {} })
+  wx.switchTab({ url: '/pages/chat/chat' })
+}
+
+function requireLogin() {
+  if (!isLoggedIn()) {
+    wx.reLaunch({ url: '/pages/login/login' })
+    return false
+  }
+  syncTabBar()
+  return true
+}
+
 function requireCustomer() {
   if (!isLoggedIn()) {
     wx.reLaunch({ url: '/pages/login/login' })
     return false
   }
+  if (isAdmin()) {
+    wx.reLaunch({ url: '/pages/admin-inbox/admin-inbox' })
+    return false
+  }
+  wx.showTabBar({ fail() {} })
+  return true
+}
+
+function requireAdmin() {
+  if (!isLoggedIn() || !isAdmin()) {
+    wx.reLaunch({ url: '/pages/login/login' })
+    return false
+  }
+  wx.hideTabBar({ fail() {} })
   return true
 }
 
@@ -155,6 +202,9 @@ module.exports = {
   getLoginType,
   getUserId,
   isLoggedIn,
+  isAdmin,
+  syncTabBar,
+  enterHome,
   getLocalKey,
   resolveMediaUrl,
   resolveProductMedia,
@@ -165,6 +215,8 @@ module.exports = {
   markManualLogout,
   consumeManualLogout,
   shouldSkipAutoLogin,
+  requireLogin,
   requireCustomer,
+  requireAdmin,
   requireLoginForAction
 }

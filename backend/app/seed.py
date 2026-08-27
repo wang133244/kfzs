@@ -90,45 +90,31 @@ async def _ensure_column(conn, table: str, column: str, ddl: str) -> None:
         await conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {ddl}"))
 
 
+async def _ensure_account(session, username: str, password: str, role: str) -> None:
+    # 每次启动按配置同步测试账号密码，避免云上旧库对不上 README 账号
+    hashed = hash_password(password)
+    row = await session.scalar(select(User).where(User.username == username))
+    if row is None:
+        session.add(
+            User(
+                username=username,
+                password_hash=hashed,
+                role=role,
+                avatar_url="",
+            )
+        )
+        return
+    row.password_hash = hashed
+    row.role = role
+
+
 async def seed_all() -> None:
     # 幂等初始化：用户/订单已存在时跳过，可重复执行
     await create_tables()
     async with async_session_factory() as session:
-        existing_user = await session.scalar(
-            select(User).where(User.username == settings.admin_username)
-        )
-        if existing_user is None:
-            session.add(
-                User(
-                    username=settings.admin_username,
-                    password_hash=hash_password(settings.admin_password),
-                    role="admin",
-                )
-            )
-        # 内部员工账号（staff）：可访问管理后台、人工客服台、商品管理等
-        staff_user = await session.scalar(
-            select(User).where(User.username == settings.staff_username)
-        )
-        if staff_user is None:
-            session.add(
-                User(
-                    username=settings.staff_username,
-                    password_hash=hash_password(settings.staff_password),
-                    role="staff",
-                )
-            )
-        # 顾客账号（customer）：仅可使用 AI 聊天与商品橱窗
-        customer_user = await session.scalar(
-            select(User).where(User.username == settings.customer_username)
-        )
-        if customer_user is None:
-            session.add(
-                User(
-                    username=settings.customer_username,
-                    password_hash=hash_password(settings.customer_password),
-                    role="customer",
-                )
-            )
+        await _ensure_account(session, settings.admin_username, settings.admin_password, "admin")
+        await _ensure_account(session, settings.staff_username, settings.staff_password, "staff")
+        await _ensure_account(session, settings.customer_username, settings.customer_password, "customer")
 
         for order_data in ORDERS:
             existing = await session.scalar(

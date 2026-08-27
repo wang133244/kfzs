@@ -1,0 +1,26 @@
+<view class="page">
+  <view wx:if="{{loading && !customers.length}}" class="empty">加载中…</view>
+  <view wx:elif="{{error && !customers.length}}" class="empty error">{{error}}</view>
+  <view wx:elif="{{!customers.length}}" class="empty">暂无用户</view>
+
+  <view wx:else class="list">
+    <view
+      wx:for="{{customers}}"
+      wx:key="user_id"
+      class="row"
+      data-id="{{item.user_id}}"
+      bindtap="openChat"
+    >
+      <image class="avatar" src="{{item.avatar}}" mode="aspectFill" />
+      <view class="body">
+        <view class="top">
+          <text class="name">{{item.username}}</text>
+          <text class="badge {{item.can_chat ? 'badge-on' : ''}}">{{item.statusText}}</text>
+        </view>
+        <view class="preview">{{item.preview}}</view>
+      </view>
+    </view>
+  </view>
+
+  <admin-tabbar current="inbox" />
+</view>

@@ -17,7 +17,7 @@ Page({
   },
 
   onShow() {
-    if (!auth.requireCustomer()) return
+    if (!auth.requireLogin()) return
     this.setData({ wallet: Number(auth.getWallet() || 0).toFixed(2) })
     this.refresh()
   },

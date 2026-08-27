@@ -16,7 +16,7 @@
         bindinput="onDraftName"
         bindblur="saveName"
       />
-      <view class="meta">{{role === 'admin' ? '管理员账号' : (loginType === 'wechat' ? '微信登录' : '测试账号')}} · 点击头像或用户名可修改</view>
+      <view class="meta">{{isAdmin ? '管理员账号' : (loginType === 'wechat' ? '微信登录' : '测试账号')}} · 点击头像或用户名可修改</view>
     </view>
   </view>
 
@@ -38,4 +38,6 @@
   </view>
 
   <view class="logout" catchtap="logout">退出登录</view>
+
+  <admin-tabbar wx:if="{{isAdmin}}" current="me" />
 </view>

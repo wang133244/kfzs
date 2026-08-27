@@ -22,6 +22,9 @@ App({
           cart.pullFromServer()
         })
         .catch(() => cart.pullFromServer())
+      if (auth.isAdmin()) {
+        wx.reLaunch({ url: '/pages/admin-inbox/admin-inbox' })
+      }
     }
   },
 

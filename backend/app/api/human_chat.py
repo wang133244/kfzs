@@ -72,6 +72,8 @@ async def reply_to_session(
     session = await db.get(ChatSession, session_id)
     if session is None:
         raise HTTPException(404, "会话不存在")
+    if session.handoff_status not in ("waiting", "active"):
+        raise HTTPException(400, "用户尚未转人工，无法接入")
     content = str(payload.get("content") or "").strip()
     if not content:
         raise HTTPException(400, "回复内容不能为空")

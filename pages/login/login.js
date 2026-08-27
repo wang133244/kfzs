@@ -16,7 +16,7 @@ Page({
       return
     }
     if (auth.isLoggedIn()) {
-      wx.switchTab({ url: '/pages/chat/chat' })
+      auth.enterHome(auth.getRole())
       return
     }
     if (auth.getLoginType() === 'wechat' && !this._wxTried) {
@@ -55,14 +55,10 @@ Page({
         code,
         local_key: auth.getLocalKey()
       })
-      if (result.role === 'staff') {
-        this.setData({ error: '员工请打开原来的网页工作台' })
-        return
-      }
       result.login_type = 'wechat'
       auth.saveAuth(result)
       require('../../utils/cart').pullFromServer()
-      wx.switchTab({ url: '/pages/chat/chat' })
+      auth.enterHome(result.role)
     } catch (err) {
       this.setData({ error: err.message || '微信登录失败' })
     } finally {
@@ -81,17 +77,10 @@ Page({
     this.setData({ loading: true, error: '' })
     try {
       const result = await api.login(username, password)
-      if (result.role === 'staff') {
-        this.setData({
-          loading: false,
-          error: '本小程序仅供顾客使用，员工请打开原来的网页工作台'
-        })
-        return
-      }
       result.login_type = 'password'
       auth.saveAuth(result)
       require('../../utils/cart').pullFromServer()
-      wx.switchTab({ url: '/pages/chat/chat' })
+      auth.enterHome(result.role)
     } catch (err) {
       this.setData({ error: err.message || '登录失败' })
     } finally {

@@ -26,8 +26,8 @@ conda run -n langchain python -m uvicorn app.main:app --reload --host 127.0.0.1 
 ## 登录
 
 - 普通用户：微信一键登录（开发者工具里也会记住同一模拟用户）
-- 测试账号：`customer` / `Customer@123`
-- 管理员：`admin` / `Admin@123456`
+- 测试账号：`customer` / `Customer@123`（与普通用户同一套顾客界面）
+- 管理员：`admin` / `Admin@123456`（独立四栏：用户会话 / 橱窗 / 订单查询 / 我的）
 
 ## 功能
 
@@ -35,6 +35,7 @@ conda run -n langchain python -m uvicorn app.main:app --reload --host 127.0.0.1 
 - 灯具橱窗与商品详情
 - 购物车钱包下单：初始余额 2000 元，下单扣款并生成订单（不发货）
 - 个人中心：头像 / 用户名可改、钱包、订单查询
+- 管理员：微信式用户列表，仅用户转人工后可接入聊天；订单页按「名字 + 订单号」查询
 - 订单号格式为下单时间，例如 `2024.12.3.8.23.12`
 
 接口走微信云托管 `callContainer`，**不要**把 `*.sh.run.tcloudbase.com` 配进小程序合法域名（那是测试域名，正式环境会被拒绝）。

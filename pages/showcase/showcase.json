@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "星途橱窗"
+  "navigationBarTitleText": "星途橱窗",
+  "usingComponents": {
+    "admin-tabbar": "/components/admin-tabbar/admin-tabbar"
+  }
 }

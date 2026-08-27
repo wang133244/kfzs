@@ -1,0 +1,30 @@
+<view class="bar">
+  <view class="item {{current === 'inbox' ? 'on' : ''}}" data-key="inbox" bindtap="onTap">
+    <image
+      class="icon"
+      src="{{current === 'inbox' ? '/assets/tab-chat-active.png' : '/assets/tab-chat.png'}}"
+    />
+    <text>用户</text>
+  </view>
+  <view class="item {{current === 'shop' ? 'on' : ''}}" data-key="shop" bindtap="onTap">
+    <image
+      class="icon"
+      src="{{current === 'shop' ? '/assets/tab-shop-active.png' : '/assets/tab-shop.png'}}"
+    />
+    <text>橱窗</text>
+  </view>
+  <view class="item {{current === 'orders' ? 'on' : ''}}" data-key="orders" bindtap="onTap">
+    <image
+      class="icon"
+      src="{{current === 'orders' ? '/assets/tab-cart-active.png' : '/assets/tab-cart.png'}}"
+    />
+    <text>订单</text>
+  </view>
+  <view class="item {{current === 'me' ? 'on' : ''}}" data-key="me" bindtap="onTap">
+    <image
+      class="icon"
+      src="{{current === 'me' ? '/assets/tab-user-active.png' : '/assets/tab-user.png'}}"
+    />
+    <text>我的</text>
+  </view>
+</view>

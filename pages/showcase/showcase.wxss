@@ -2,6 +2,10 @@
   padding-bottom: 40rpx;
 }
 
+.page.admin-pad {
+  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+}
+
 .brand {
   padding: 16rpx 28rpx 4rpx;
   background: #1b2a4a;

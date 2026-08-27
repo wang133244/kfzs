@@ -33,6 +33,35 @@ Page({
       getApp().globalData.pendingAsk = ''
       this.sendText(ask)
     }
+    this._poll = setInterval(() => this.pollHistory(), 4000)
+  },
+
+  onHide() {
+    if (this._poll) {
+      clearInterval(this._poll)
+      this._poll = null
+    }
+  },
+
+  onUnload() {
+    if (this._poll) {
+      clearInterval(this._poll)
+      this._poll = null
+    }
+  },
+
+  async pollHistory() {
+    if (!this.data.sessionId || this.data.sending) return
+    try {
+      const history = await api.getMessages(this.data.sessionId)
+      const messages = await this.mapHistory(history)
+      const lastOld = (this.data.messages || []).slice(-1)[0]
+      const lastNew = messages.slice(-1)[0]
+      if (!messages.length) return
+      if (!lastOld || !lastNew || lastOld.id !== lastNew.id || lastOld.content !== lastNew.content) {
+        this.applyChat(this.data.sessionId, messages)
+      }
+    } catch (err) {}
   },
 
   cacheChat() {
