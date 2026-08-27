@@ -88,9 +88,18 @@ def _evidence_for_prompt(state: dict[str, Any]) -> str:
     if cards:
         listing = []
         for index, card in enumerate(cards[:4], start=1):
+            title = str(card.get("title") or "")
             price = card.get("price")
             price_text = f"{float(price):.0f}元" if price not in (None, "") else ""
-            listing.append(f"{index}.{_short_title(str(card.get('title') or ''))}{price_text}")
+            tags = []
+            if "太阳能" in title:
+                tags.append("太阳能")
+            if "防水" in title or "IP" in title.upper():
+                tags.append("防水")
+            if "不锈钢" in title:
+                tags.append("不锈钢")
+            attrs = (" " + " ".join(tags)) if tags else ""
+            listing.append(f"{index}.{_short_title(title)}{price_text}{attrs}")
         parts.append("商品：" + "；".join(listing))
     for result in (state.get("tool_results") or [])[:2]:
         parts.append(_compact_tool(result))
@@ -138,9 +147,11 @@ def _llm_prompt(state: dict[str, Any]) -> list[dict[str, str]]:
         "你是星途灯具店微信客服，口语短句，最多3句约80字。"
         "只卖柱头灯、户外壁灯、太阳能庭院灯，没有的品类不要提。"
         "往好处说，但不要夸成永不损坏、终身质保。"
-        "不要复述全称，用「这款」「第一款」。"
-        "价格库存订单号只用依据，不要编，不要markdown。"
-        "有防水、不锈钢就说户外能用。追问时接着刚才的商品说。"
+        "不要复述全称，用「这款」「第一款」。不要照念依据原句。"
+        "价格、库存、订单号必须用依据里的数字，不要编。"
+        "问耐用就按防水、不锈钢、太阳能用口语说户外能用，不必报规格。"
+        "没问到的型号、售价、物流时效不要主动念。不要markdown。"
+        "追问时接着刚才的商品说。"
     )
     lines = [f"用户：{last_user}", f"意图：{state.get('intent') or 'unknown'}"]
     resolved = str(state.get("resolved_query") or "").strip()

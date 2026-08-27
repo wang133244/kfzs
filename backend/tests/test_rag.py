@@ -63,6 +63,19 @@ async def test_hybrid_answer_mentions_product_price():
     assert "知识库" not in answer
 
 
+@pytest.mark.asyncio
+async def test_hybrid_durability_uses_short_clerk_draft():
+    from app.core.hybrid_rag import hybrid_search_with_answer
+
+    answer, citations, relevance = await hybrid_search_with_answer("第一个耐用吗")
+    assert citations
+    assert relevance >= 0.1
+    assert "售价" not in answer
+    assert "P100" not in answer
+    assert len(answer) < 80
+    assert "防水" in answer or "户外" in answer
+
+
 def test_hybrid_rag_module_does_not_bind_llm():
     from app.core import hybrid_rag
 

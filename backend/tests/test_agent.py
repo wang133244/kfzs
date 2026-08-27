@@ -59,6 +59,30 @@ def test_grounding_passes_verified_fact():
     assert result["ok"] is True
 
 
+def test_grounding_allows_colloquial_durability():
+    result = check_grounding(
+        {
+            "final_response": "这款做了户外防水，风吹雨淋能用3年，日常没问题。",
+            "tool_results": [],
+            "retrieved_chunks": ["太阳能柱头灯 售价 110 元，户外防水，不锈钢灯体。"],
+            "citations": [],
+        }
+    )
+    assert result["ok"] is True
+
+
+def test_grounding_still_rejects_fake_price():
+    result = check_grounding(
+        {
+            "final_response": "这款只要 888 元。",
+            "tool_results": [],
+            "retrieved_chunks": ["太阳能柱头灯 售价 110 元，户外防水。"],
+            "citations": [],
+        }
+    )
+    assert result["ok"] is False
+
+
 def test_shop_prompt_sounds_like_human_clerk():
     from app.agent.llm import _llm_prompt
 
@@ -83,6 +107,8 @@ def test_shop_prompt_sounds_like_human_clerk():
     assert "往好处说" in system
     assert "店员" in system or "口语" in system
     assert "不要复述全称" in system
+    assert "不要照念" in system or "不必照念" in system
+    assert "耐用" in system
     assert "第一款" in user or "1." in user
 
 

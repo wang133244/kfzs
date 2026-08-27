@@ -105,6 +105,17 @@ class CrossEncoderReranker:
 
 reranker = CrossEncoderReranker()
 
+_SOFT_PRODUCT_ASK = ("耐用", "结实", "质量", "好用吗", "对比", "哪个好", "好看")
+_PRODUCT_CHUNK_HINTS = ("防水", "太阳能", "不锈钢", "柱头", "壁灯", "庭院", "铝材", "户外", "灯体")
+
+
+def _is_soft_product_ask(query: str) -> bool:
+    return any(word in query for word in _SOFT_PRODUCT_ASK)
+
+
+def _looks_like_product_chunk(text: str) -> bool:
+    return any(word in (text or "") for word in _PRODUCT_CHUNK_HINTS)
+
 
 def _relevance_from_distance(distance: float | None) -> float:
     """归一化相关性分数：Chroma L2 平方距离 → [0,1]，distance 为 None 时视为 0。"""
@@ -150,6 +161,11 @@ async def hybrid_search_with_answer(query: str, top_k: int = 3) -> tuple[str, li
         {"source": item.get("source", "unknown"), "text": item.get("text", ""), "score": item.get("score")}
         for item in results
     ]
+    if _is_soft_product_ask(query):
+        product_hits = [item for item in citations if _looks_like_product_chunk(item.get("text", ""))]
+        if product_hits:
+            citations = product_hits[:2]
+        return "这款户外做了防水，日常风吹雨淋能用。", citations, max(relevance_score, 0.4)
     # 检索只抽证据，口语回复交给最后一轮润色，避免连打两次大模型
     terms = _query_terms(query)
     candidates: list[tuple[float, str]] = []

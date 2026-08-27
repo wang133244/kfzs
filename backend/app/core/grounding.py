@@ -23,14 +23,31 @@ _KNOWN_STATUSES = set(_STATUS_CN_TO_EN.values()) | {
 }
 
 
+_PRICE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*元")
+_STOCK_RE = re.compile(r"库存\s*(\d+(?:\.\d+)?)")
+_ORDER_RE = re.compile(r"(?:订单\s*|ORD-?)\s*(\d{3,})", re.I)
+
+
 def _numbers(text: str) -> set[str]:
-    # 提取独立数字（排除 SKU001 这类字母内数字），用于事实核验
+    # 提取独立数字（排除 SKU001 这类字母内数字），用于核对依据里有没有这个数
     found = set()
     for match in re.findall(r"(?<![A-Za-z0-9])\d+(?:\.\d+)?(?![A-Za-z0-9])", text):
         try:
             found.add(str(float(match)))
         except ValueError:
             continue
+    return found
+
+
+def _claim_numbers(text: str) -> set[str]:
+    # 只把价格/库存/订单号当硬事实；「能用3年」这种口语数字不拦
+    found = set()
+    for pattern in (_PRICE_RE, _STOCK_RE, _ORDER_RE):
+        for match in pattern.finditer(text or ""):
+            try:
+                found.add(str(float(match.group(1))))
+            except (TypeError, ValueError):
+                continue
     return found
 
 
@@ -61,11 +78,11 @@ def _evidence_text(state: dict[str, Any]) -> str:
 
 
 def check_grounding(state: dict[str, Any]) -> dict:
-    # 答案中的订单号/金额/库存/状态必须能在依据中找到，否则拒绝输出
+    # 答案里的价格/库存/订单号/状态必须能在依据中找到；口语年限等不拦
     answer = state.get("final_response") or ""
     evidence = _evidence_text(state)
-    claims = _numbers(answer) | _statuses(answer)
-    supported = _numbers(evidence) | _statuses(evidence)
+    claims = _claim_numbers(answer) | _statuses(answer)
+    supported = _numbers(evidence) | _claim_numbers(evidence) | _statuses(evidence)
     missing = claims - supported
     if missing:
         return {
