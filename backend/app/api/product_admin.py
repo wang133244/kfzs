@@ -1,42 +1,50 @@
-# 商品管理 API：员工新增/下架/删除商品，仅限 staff / admin 角色访问。
-from fastapi import APIRouter, Depends, HTTPException
+# 商品管理 API：员工新增/编辑/下架/删除商品，仅限 staff / admin 角色访问。
+import uuid
+from pathlib import Path
 
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+
+from ..core.product_media import proxied_media
 from ..core.product_service import (
     create_product,
     delete_product,
     list_products_for_manage,
+    update_product_fields,
     update_product_status,
 )
 from ..core.crawler import crawl_product_page
 from ..models import User
-from ..schemas import ProductCreate
+from ..schemas import ProductCreate, ProductUpdate
 from .deps import get_current_staff
 
 
 router = APIRouter(prefix="/admin/products", tags=["product-admin"])
+UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads" / "products"
+
+
+def _product_payload(product: dict) -> dict:
+    return {
+        "product_id": product["product_id"],
+        "title": product["title"],
+        "subtitle": product.get("subtitle") or "",
+        "category": product.get("category") or "",
+        "category_code": product.get("category_code") or "",
+        "price": float(product["price"]),
+        "original_price": float(product.get("original_price") or product["price"]),
+        "sales_count": product.get("sales_count") or 0,
+        "cover": proxied_media(product.get("cover") or ""),
+        "description": product.get("description") or "",
+        "status": product.get("status") or "",
+        "tags": product.get("tags") or [],
+        "source_url": product.get("source_url") or "",
+    }
 
 
 @router.get("")
 async def list_products(user: User = Depends(get_current_staff)) -> list[dict]:
     # 商品管理列表：返回全部商品（含已下架），按创建时间倒序
     items = await list_products_for_manage()
-    return [
-        {
-            "product_id": p["product_id"],
-            "title": p["title"],
-            "subtitle": p["subtitle"],
-            "category": p["category"],
-            "category_code": p["category_code"],
-            "price": float(p["price"]),
-            "original_price": float(p["original_price"]),
-            "sales_count": p["sales_count"],
-            "cover": p["cover"],
-            "status": p["status"],
-            "tags": p["tags"],
-            "source_url": p.get("source_url", ""),
-        }
-        for p in items
-    ]
+    return [_product_payload(p) for p in items]
 
 
 @router.post("")
@@ -45,14 +53,54 @@ async def add_product(
     user: User = Depends(get_current_staff),
 ) -> dict:
     # 员工新增商品：写入 DB 并同步内存橱窗
+    title = (payload.title or "").strip()
+    if not title:
+        raise HTTPException(400, "请填写商品标题")
     data = payload.model_dump()
+    data["title"] = title
     product = await create_product(data)
-    return {
-        "product_id": product["product_id"],
-        "title": product["title"],
-        "status": product["status"],
-        "created": True,
-    }
+    result = _product_payload(product)
+    result["created"] = True
+    return result
+
+
+@router.post("/cover")
+async def upload_cover(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_staff),
+) -> dict:
+    content = await file.read()
+    if not content:
+        raise HTTPException(400, "请选择商品图片")
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(400, "图片不能超过 5MB")
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    filename = uuid.uuid4().hex + ".jpg"
+    (UPLOAD_DIR / filename).write_bytes(content)
+    return {"cover": f"/uploads/products/{filename}"}
+
+
+@router.put("/{product_id}")
+@router.patch("/{product_id}")
+async def edit_product(
+    product_id: str,
+    payload: ProductUpdate,
+    user: User = Depends(get_current_staff),
+) -> dict:
+    data = payload.model_dump(exclude_unset=True)
+    if "title" in data:
+        title = (data["title"] or "").strip()
+        if not title:
+            raise HTTPException(400, "请填写商品标题")
+        data["title"] = title
+    if "price" in data and data["price"] is not None and "original_price" not in data:
+        data["original_price"] = data["price"]
+    if "cover" in data and data["cover"] and "gallery" not in data:
+        data["gallery"] = [data["cover"]]
+    product = await update_product_fields(product_id, data)
+    if product is None:
+        raise HTTPException(404, "商品不存在")
+    return _product_payload(product)
 
 
 @router.delete("/{product_id}")
@@ -60,7 +108,7 @@ async def remove_product(
     product_id: str,
     user: User = Depends(get_current_staff),
 ) -> dict:
-    # 员工删除/下架商品
+    # 员工删除商品
     if not await delete_product(product_id):
         raise HTTPException(404, "商品不存在")
     return {"deleted": True, "product_id": product_id}

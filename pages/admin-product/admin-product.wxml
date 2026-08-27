@@ -1,0 +1,30 @@
+<view class="page">
+  <view class="cover-box" bindtap="onChooseCover">
+    <image wx:if="{{coverSrc}}" class="cover" src="{{coverSrc}}" mode="aspectFill" />
+    <view wx:else class="cover empty">点击上传封面</view>
+  </view>
+
+  <view class="card">
+    <view class="label">标题</view>
+    <input class="input" value="{{title}}" maxlength="80" placeholder="商品名称" bindinput="onTitle" />
+
+    <view class="label">分类</view>
+    <picker mode="selector" range="{{categories}}" range-key="name" value="{{categoryIndex}}" bindchange="onCategory">
+      <view class="picker">{{categories[categoryIndex].name}}</view>
+    </picker>
+
+    <view class="label">价格（元）</view>
+    <input class="input" type="digit" value="{{price}}" placeholder="例如 199" bindinput="onPrice" />
+
+    <view class="label">简介</view>
+    <textarea
+      class="textarea"
+      value="{{description}}"
+      maxlength="500"
+      placeholder="选填，顾客会在详情页看到"
+      bindinput="onDescription"
+    />
+  </view>
+
+  <button class="save" loading="{{saving}}" disabled="{{saving}}" bindtap="onSave">保存</button>
+</view>

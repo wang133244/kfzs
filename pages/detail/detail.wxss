@@ -117,8 +117,20 @@
   font-weight: 600;
 }
 
+.danger {
+  flex: 1;
+  margin: 0;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
 .ghost::after,
-.primary::after {
+.primary::after,
+.danger::after {
   border: none;
 }
 

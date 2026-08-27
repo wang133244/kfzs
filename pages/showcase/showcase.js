@@ -30,8 +30,16 @@ Page({
     try {
       try {
         const cats = await api.listShopCategories()
+        const base = [{ code: 'all', name: '全部' }].concat(cats || [])
         this.setData({
-          categories: [{ code: 'all', name: '全部' }].concat(cats || [])
+          categories: this.data.isAdmin
+            ? [
+                { code: 'all', name: '全部' },
+                { code: 'post', name: '柱头灯' },
+                { code: 'wall', name: '户外壁灯' },
+                { code: 'solar', name: '太阳能庭院灯' }
+              ]
+            : base
         })
       } catch (err) {}
       await this.loadProducts()
@@ -47,6 +55,20 @@ Page({
   },
 
   async loadProducts() {
+    if (this.data.isAdmin) {
+      let rows = await api.listAdminProducts()
+      const keyword = (this.data.keyword || '').trim().toLowerCase()
+      const category = this.data.activeCategory
+      if (category && category !== 'all') {
+        rows = (rows || []).filter((item) => item.category_code === category)
+      }
+      if (keyword) {
+        rows = (rows || []).filter((item) => String(item.title || '').toLowerCase().indexOf(keyword) >= 0)
+      }
+      const products = await Promise.all((rows || []).map((item) => media.hydrateProduct(item)))
+      this.setData({ products })
+      return
+    }
     const data = await api.listShopProducts({
       q: (this.data.keyword || '').trim() || undefined,
       category: this.data.activeCategory === 'all' ? undefined : this.data.activeCategory,
@@ -79,6 +101,11 @@ Page({
     } finally {
       this.setData({ loading: false })
     }
+  },
+
+  onAddProduct() {
+    if (!auth.requireAdmin()) return
+    wx.navigateTo({ url: '/pages/admin-product/admin-product' })
   },
 
   openDetail(e) {

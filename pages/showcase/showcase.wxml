@@ -15,6 +15,7 @@
       bindconfirm="onSearch"
     />
     <text class="search-btn" bindtap="onSearch">搜索</text>
+    <text wx:if="{{isAdmin}}" class="search-btn" bindtap="onAddProduct">添加</text>
   </view>
 
   <scroll-view class="cats" scroll-x>
@@ -37,12 +38,13 @@
     <view
       wx:for="{{products}}"
       wx:key="product_id"
-      class="item"
+      class="item {{item.status === 'off_shelf' ? 'item-off' : ''}}"
       data-id="{{item.product_id}}"
       bindtap="openDetail"
     >
       <image wx:if="{{item.coverSrc}}" class="cover" src="{{item.coverSrc}}" mode="aspectFill" />
       <view wx:else class="cover cover-empty">灯</view>
+      <view wx:if="{{item.status === 'off_shelf'}}" class="off-badge">已下架</view>
       <view class="meta">
         <view class="name">{{item.title}}</view>
         <view class="row">

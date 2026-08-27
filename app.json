@@ -11,7 +11,8 @@
     "pages/webview/webview",
     "pages/admin-inbox/admin-inbox",
     "pages/admin-chat/admin-chat",
-    "pages/admin-orders/admin-orders"
+    "pages/admin-orders/admin-orders",
+    "pages/admin-product/admin-product"
   ],
   "window": {
     "navigationBarBackgroundColor": "#1B2A4A",

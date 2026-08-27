@@ -237,6 +237,19 @@ class ProductCreate(BaseModel):
     source_url: str = ""
 
 
+class ProductUpdate(BaseModel):
+    title: str | None = None
+    subtitle: str | None = None
+    category: str | None = None
+    category_code: str | None = None
+    price: float | None = None
+    original_price: float | None = None
+    cover: str | None = None
+    description: str | None = None
+    status: str | None = None
+    gallery: list[str] | None = None
+
+
 # 商品管理列表项：金额转 float 便于前端展示
 class ProductManageOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)

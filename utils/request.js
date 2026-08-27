@@ -232,6 +232,95 @@ function closeAdminSession(sessionId) {
   })
 }
 
+function listAdminProducts() {
+  return request('/api/v1/admin/products')
+}
+
+function createAdminProduct(data) {
+  return request('/api/v1/admin/products', {
+    method: 'POST',
+    data: data
+  })
+}
+
+function updateAdminProduct(productId, data) {
+  return request('/api/v1/admin/products/' + encodeURIComponent(productId), {
+    method: 'PUT',
+    data: data
+  })
+}
+
+function setAdminProductStatus(productId, status) {
+  return request('/api/v1/admin/products/' + encodeURIComponent(productId) + '/status', {
+    method: 'POST',
+    data: { status }
+  })
+}
+
+function deleteAdminProduct(productId) {
+  return request('/api/v1/admin/products/' + encodeURIComponent(productId), {
+    method: 'DELETE'
+  })
+}
+
+function uploadProductCover(filePath) {
+  if (USE_CLOUD) {
+    const { CLOUD_ENV } = require('./config')
+    const cloud = require('./cloud')
+    const cloudPath = 'products/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg'
+    return cloud.ensureCloud().then(
+      () =>
+        new Promise((resolve, reject) => {
+          wx.cloud.uploadFile({
+            cloudPath,
+            filePath,
+            config: { env: CLOUD_ENV },
+            success(res) {
+              if (!res.fileID) {
+                reject(new Error('图片上传失败'))
+                return
+              }
+              resolve({ cover: res.fileID })
+            },
+            fail() {
+              reject(new Error('图片上传失败，请在云开发开通云存储'))
+            }
+          })
+        })
+    )
+  }
+
+  return new Promise((resolve, reject) => {
+    const token = getToken()
+    wx.uploadFile({
+      url: BASE_URL + '/api/v1/admin/products/cover',
+      filePath,
+      name: 'file',
+      header: token ? { Authorization: 'Bearer ' + token } : {},
+      timeout: 60000,
+      success(res) {
+        if (res.statusCode === 401) {
+          expireSession()
+          reject(new Error('登录已过期'))
+          return
+        }
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          reject(new Error(parseDetail(res.data)))
+          return
+        }
+        try {
+          resolve(typeof res.data === 'string' ? JSON.parse(res.data) : res.data)
+        } catch (err) {
+          reject(new Error('图片上传失败'))
+        }
+      },
+      fail() {
+        reject(new Error('无法连接本机后端，请检查网络'))
+      }
+    })
+  })
+}
+
 function uploadAvatar(filePath) {
   if (USE_CLOUD) {
     const { CLOUD_ENV } = require('./config')
@@ -311,5 +400,11 @@ module.exports = {
   listAdminOrders,
   getAdminSessionMessages,
   replyAdminSession,
-  closeAdminSession
+  closeAdminSession,
+  listAdminProducts,
+  createAdminProduct,
+  updateAdminProduct,
+  setAdminProductStatus,
+  deleteAdminProduct,
+  uploadProductCover
 }

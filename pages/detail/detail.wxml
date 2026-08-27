@@ -27,7 +27,12 @@
     </view>
   </view>
 
-  <view class="bottom safe-bottom">
+  <view class="bottom safe-bottom" wx:if="{{isAdmin}}">
+    <button class="ghost" bindtap="onEdit">编辑</button>
+    <button class="ghost" bindtap="onToggleShelf">{{product.status === 'off_shelf' ? '上架' : '下架'}}</button>
+    <button class="danger" bindtap="onDelete">删除</button>
+  </view>
+  <view class="bottom safe-bottom" wx:else>
     <button class="ghost" bindtap="askCs">问客服</button>
     <button class="ghost" bindtap="addCart">加购物车</button>
     <button class="primary" bindtap="openSource">原网址查看</button>

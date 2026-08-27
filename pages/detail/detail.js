@@ -8,16 +8,21 @@ Page({
   data: {
     product: null,
     loading: true,
-    error: ''
+    error: '',
+    isAdmin: false
   },
 
   onLoad(query) {
-    const id = query.id || ''
-    if (!id) {
+    this.productId = query.id || ''
+    if (!this.productId) {
       this.setData({ loading: false, error: '缺少商品编号' })
       return
     }
-    this.loadDetail(id)
+  },
+
+  onShow() {
+    this.setData({ isAdmin: auth.isAdmin() })
+    if (this.productId) this.loadDetail(this.productId)
   },
 
   async loadDetail(id) {
@@ -52,5 +57,42 @@ Page({
     if (!this.data.product) return
     getApp().globalData.pendingAsk = '我想了解 ' + this.data.product.title
     wx.switchTab({ url: '/pages/chat/chat' })
+  },
+
+  onEdit() {
+    if (!auth.requireAdmin()) return
+    wx.navigateTo({ url: '/pages/admin-product/admin-product?id=' + this.productId })
+  },
+
+  async onToggleShelf() {
+    if (!auth.requireAdmin() || !this.data.product) return
+    const next = this.data.product.status === 'off_shelf' ? 'on_sale' : 'off_shelf'
+    try {
+      await api.setAdminProductStatus(this.productId, next)
+      await this.loadDetail(this.productId)
+      wx.showToast({ title: next === 'off_shelf' ? '已下架' : '已上架', icon: 'success' })
+    } catch (err) {
+      wx.showToast({ title: err.message || '操作失败', icon: 'none' })
+    }
+  },
+
+  onDelete() {
+    if (!auth.requireAdmin() || !this.data.product) return
+    wx.showModal({
+      title: '删除商品',
+      content: '删除后橱窗不再展示，确定删除？',
+      confirmText: '删除',
+      confirmColor: '#b91c1c',
+      success: async (res) => {
+        if (!res.confirm) return
+        try {
+          await api.deleteAdminProduct(this.productId)
+          wx.showToast({ title: '已删除', icon: 'success' })
+          setTimeout(() => wx.navigateBack(), 400)
+        } catch (err) {
+          wx.showToast({ title: err.message || '删除失败', icon: 'none' })
+        }
+      }
+    })
   }
 })

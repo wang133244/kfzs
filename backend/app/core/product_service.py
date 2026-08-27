@@ -168,6 +168,19 @@ async def create_product(data: dict) -> dict:
         product_id = f"P{next_num}"
         price = Decimal(str(data.get("price", 0)))
         original = Decimal(str(data.get("original_price") or data.get("price", 0)))
+        skus = data.get("skus") or []
+        if not skus:
+            skus = [
+                {
+                    "sku_id": f"SKU-{product_id}",
+                    "spec": "默认规格",
+                    "price": float(price),
+                    "stock": 50,
+                    "threshold": 5,
+                }
+            ]
+        cover = data.get("cover") or ""
+        gallery = data.get("gallery") or ([cover] if cover else [])
         product = Product(
             product_id=product_id,
             title=data["title"],
@@ -177,30 +190,37 @@ async def create_product(data: dict) -> dict:
             price=price,
             original_price=original,
             sales_count=int(data.get("sales_count", 0)),
-            cover=data.get("cover", ""),
+            cover=cover,
             cover_color=data.get("cover_color", "#E5E7EB"),
             description=data.get("description", ""),
-            gallery_json=json.dumps(data.get("gallery", []), ensure_ascii=False),
+            gallery_json=json.dumps(gallery, ensure_ascii=False),
             specs_json=json.dumps(data.get("specs", []), ensure_ascii=False),
-            skus_json=json.dumps(data.get("skus", []), ensure_ascii=False),
-            services_json=json.dumps(data.get("services", []), ensure_ascii=False),
-            tags_json=json.dumps(data.get("tags", []), ensure_ascii=False),
+            skus_json=json.dumps(skus, ensure_ascii=False),
+            services_json=json.dumps(
+                data.get("services") or ["7天无理由退换", "全国包邮"],
+                ensure_ascii=False,
+            ),
+            tags_json=json.dumps(data.get("tags") or [], ensure_ascii=False),
             status=data.get("status", "on_sale"),
             source_url=data.get("source_url", ""),
         )
         session.add(product)
+        await session.flush()
+        await _ensure_inventory(session, [product])
         await session.commit()
         await session.refresh(product)
+        result = _product_to_dict(product)
     await reload_memory()
-    return _product_to_dict(product)
+    return result
 
 
 async def delete_product(product_id: str) -> bool:
-    # 员工下架/删除商品：从 DB 移除后同步内存
+    # 员工删除商品：从 DB 移除后同步内存
     async with async_session_factory() as session:
         product = await session.scalar(select(Product).where(Product.product_id == product_id))
         if product is None:
             return False
+        await session.execute(delete(ProductInventory).where(ProductInventory.product_id == product_id))
         await session.delete(product)
         await session.commit()
     await reload_memory()
@@ -229,6 +249,10 @@ async def update_product_fields(product_id: str, data: dict) -> dict | None:
                 setattr(product, dest, data[src])
         if "price" in data and data["price"] is not None:
             product.price = Decimal(str(data["price"]))
+            skus = _loads_list(product.skus_json)
+            if skus and isinstance(skus[0], dict):
+                skus[0]["price"] = float(product.price)
+                product.skus_json = json.dumps(skus, ensure_ascii=False)
         if "original_price" in data and data["original_price"] is not None:
             product.original_price = Decimal(str(data["original_price"]))
         if "sales_count" in data and data["sales_count"] is not None:

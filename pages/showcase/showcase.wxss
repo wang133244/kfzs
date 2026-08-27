@@ -95,6 +95,22 @@
   width: 50%;
   padding: 8rpx;
   box-sizing: border-box;
+  position: relative;
+}
+
+.item-off {
+  opacity: 0.62;
+}
+
+.off-badge {
+  position: absolute;
+  top: 20rpx;
+  left: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  background: rgba(27, 42, 74, 0.82);
+  color: #fffcf7;
+  font-size: 20rpx;
 }
 
 .cover {
