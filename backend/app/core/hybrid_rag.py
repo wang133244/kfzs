@@ -174,7 +174,8 @@ async def hybrid_search_with_answer(query: str, top_k: int = 3) -> tuple[str, li
         for sentence in re.split(r"(?<=[。！？.!?])\s*|\n+", text):
             sentence = re.sub(r"^#{1,6}\s*", "", sentence).strip(" -")
             if len(sentence) >= 6:
-                if sentence.startswith("问：") or sentence.endswith("？") or sentence.endswith("?"):
+                sentence = re.sub(r"^(?:问|答)[：:]\s*", "", sentence).strip()
+                if not sentence or sentence.startswith("问：") or sentence.endswith("？") or sentence.endswith("?"):
                     continue
                 score = sum(1 for t in terms if t in sentence.lower())
                 if any(word in query for word in ("多少钱", "价格", "售价")) and any(

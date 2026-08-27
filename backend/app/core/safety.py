@@ -43,15 +43,34 @@ def plain_customer_text(text: str) -> str:
     return re.sub(r"\s{2,}", " ", value).strip()
 
 
-def humanize_customer_text(text: str) -> str:
+def soften_catalog_names(text: str, cards: list[dict] | None = None) -> str:
+    """把回复里的商品全称换成「这款 / 第N款」，身份交给卡片。"""
+    result = text or ""
+    items = list(cards or [])
+    for index, card in enumerate(items[:6], start=1):
+        title = str(card.get("title") or "").strip()
+        if len(title) < 10:
+            continue
+        label = "这款" if len(items) == 1 else f"第{index}款"
+        for piece in (title, title[:24] if len(title) >= 24 else "", title[:16] if len(title) >= 16 else ""):
+            if piece and piece in result:
+                result = result.replace(piece, label)
+    result = re.sub(r"(这款){2,}", "这款", result)
+    result = re.sub(r"(第[1-9]款){2,}", r"\1", result)
+    return result
+
+
+def humanize_customer_text(text: str, cards: list[dict] | None = None) -> str:
     """去掉说明书腔和推脱话，给顾客看店员口吻。"""
     value = plain_customer_text(text)
     value = re.sub(r"根据知识库[：:]\s*", "", value)
+    value = re.sub(r"(?:问|答)[：:]\s*", "", value)
     value = re.sub(r"目前知识库中没有[^。！？]*[。！？]?", "", value)
     value = re.sub(r"知识库(?:中|里)?(?:没有|未收录|暂无)[^。！？]*[。！？]?", "", value)
     value = value.replace("知识库", "")
     value = re.sub(r"[^。！？]*详情页[^。！？]*[。！？]?", "", value)
     value = re.sub(r"[^。！？]*建议您?查看商品详情[^。！？]*[。！？]?", "", value)
     value = re.sub(r"[^。！？]*联系店铺客服进一步确认[^。！？]*[。！？]?", "", value)
+    value = soften_catalog_names(value, cards)
     cleaned = re.sub(r"\s{2,}", " ", value).strip(" ，,")
     return cleaned or "这款户外做了防水，日常风吹雨淋能用，你可以放心看看。"

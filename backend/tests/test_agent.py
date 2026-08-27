@@ -109,6 +109,8 @@ def test_shop_prompt_sounds_like_human_clerk():
     assert "不要复述全称" in system
     assert "不要照念" in system or "不必照念" in system
     assert "耐用" in system
+    assert "这款" in system
+    assert "卡片" in system
     assert "第一款" in user or "1." in user
 
 
@@ -291,6 +293,25 @@ async def test_product_query_attaches_cards():
     assert cards
     assert cards[0]["cover"]
     assert cards[0]["product_id"]
+    text = state.get("final_response") or ""
+    for card in cards:
+        title = str(card.get("title") or "")
+        if len(title) > 16:
+            assert title not in text
+            assert title[:18] not in text
+
+
+def test_humanize_swaps_full_title_for_this_one():
+    from app.core.safety import humanize_customer_text
+
+    title = "太阳能柱头灯户外庭院中式别墅围墙立柱灯自动开关智能光控新中式"
+    text = humanize_customer_text(
+        f"{title} 售价 110 元，户外防水。",
+        [{"title": title, "price": 110}],
+    )
+    assert title not in text
+    assert title[:16] not in text
+    assert "这款" in text or "第一款" in text or "第1款" in text
 
 
 def test_product_cards_match_recommendation_query():

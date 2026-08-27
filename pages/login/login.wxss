@@ -131,13 +131,3 @@
   color: #c4a35a;
   font-size: 26rpx;
 }
-
-.hint {
-  margin-top: 28rpx;
-  padding: 20rpx;
-  border-radius: 16rpx;
-  background: #f3eee4;
-  color: #78716c;
-  font-size: 22rpx;
-  line-height: 1.7;
-}

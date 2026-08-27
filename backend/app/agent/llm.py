@@ -104,8 +104,14 @@ def _evidence_for_prompt(state: dict[str, Any]) -> str:
     for result in (state.get("tool_results") or [])[:2]:
         parts.append(_compact_tool(result))
     seen = set(parts)
+    titles = [str(card.get("title") or "") for card in cards]
     for chunk in (state.get("retrieved_chunks") or [])[:2]:
         clipped = _clip(chunk, 100)
+        for title in titles:
+            if len(title) >= 10:
+                clipped = clipped.replace(title, "这款")
+                if len(title) >= 16:
+                    clipped = clipped.replace(title[:16], "这款")
         if clipped and clipped not in seen:
             parts.append(clipped)
             seen.add(clipped)
@@ -147,7 +153,8 @@ def _llm_prompt(state: dict[str, Any]) -> list[dict[str, str]]:
         "你是星途灯具店微信客服，口语短句，最多3句约80字。"
         "只卖柱头灯、户外壁灯、太阳能庭院灯，没有的品类不要提。"
         "往好处说，但不要夸成永不损坏、终身质保。"
-        "不要复述全称，用「这款」「第一款」。不要照念依据原句。"
+        "卡片已给顾客看，你根据编号已经知道用户在说哪一款。"
+        "不要复述全称，用「这款」「第一款」「那款」。不要照念依据原句。"
         "价格、库存、订单号必须用依据里的数字，不要编。"
         "问耐用就按防水、不锈钢、太阳能用口语说户外能用，不必报规格。"
         "没问到的型号、售价、物流时效不要主动念。不要markdown。"

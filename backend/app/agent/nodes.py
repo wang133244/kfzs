@@ -14,7 +14,7 @@ from ..core.hybrid_rag import hybrid_search_with_answer
 from ..config import settings
 from ..core.recommend import cards_from_ids, cards_from_result, parse_listed_indexes, recommend_for_user, recommend_products
 from ..core.memory import expand_query, extract_category, memory_service
-from ..core.safety import mask_sensitive, validate_customer_answer, humanize_customer_text
+from ..core.safety import humanize_customer_text, mask_sensitive, soften_catalog_names, validate_customer_answer
 
 ORDER_ID_PATTERN = re.compile(r"(?:ORD-|订单\s*)(\d{3,})")
 SKU_PATTERN = re.compile(r"(SKU-\d+|SKU\d+)", re.IGNORECASE)
@@ -131,9 +131,29 @@ def _build_product_cards(
     return cards_from_result(result)
 
 
-def _with_catalog_listing(answer: str, cards: list[dict]) -> str:
-    # 卡片会单独展示，不把长标题再塞进回复，避免下一轮上下文膨胀
-    return answer
+def _spoken_product_reply(message: str, answer: str, cards: list[dict], rec=None) -> str:
+    if not cards:
+        return answer
+    if any(word in message for word in ("多少钱", "价格", "售价")):
+        bits = []
+        for index, card in enumerate(cards[:3], start=1):
+            price = card.get("price")
+            if price not in (None, ""):
+                label = "这款" if len(cards) == 1 else f"第{index}款"
+                bits.append(f"{label}{float(price):.0f}元")
+        return "，".join(bits) + "，点卡片看详情。" if bits else "价格在卡片上。"
+    if any(word in message for word in ("耐用", "结实", "质量", "好用吗", "对比", "哪个好", "好看", "防水吗")):
+        label = "这款" if len(cards) == 1 else "这几款"
+        return f"{label}户外做了防水，日常风吹雨淋能用。"
+    if any(word in message for word in ("推荐", "有什么", "看看", "哪款", "哪种")):
+        strategy = rec.strategy if rec is not None else "need"
+        return _recommend_intro(strategy, "")
+    spoken = soften_catalog_names(answer, cards)
+    for card in cards:
+        title = str(card.get("title") or "")
+        if len(title) > 16 and title[:16] in spoken:
+            return "这款可以看看，点卡片看详情。"
+    return spoken
 
 
 async def _offer_handoff(state: dict[str, Any], message: str) -> dict[str, Any]:
@@ -439,7 +459,7 @@ async def handle_product(state: dict[str, Any]) -> dict[str, Any]:
         await _remember_product_focus(state, raw_message, last_cards)
     else:
         await _remember_product_focus(state, message, product_cards)
-    reply = _with_catalog_listing(answer, product_cards)
+    reply = _spoken_product_reply(raw_message, answer, product_cards, rec)
     return {
         "product_query": message,
         "retrieved_chunks": chunks,
@@ -637,7 +657,7 @@ async def final_answer(state: dict[str, Any]) -> dict[str, Any]:
 
     citations = sorted(set(state.get("citations") or []))
     return {
-        "final_response": humanize_customer_text(response),
+        "final_response": humanize_customer_text(response, state.get("product_cards") or []),
         "citations": citations,
         "needs_human": bool(state.get("needs_human")),
         "safety_blocked": False,

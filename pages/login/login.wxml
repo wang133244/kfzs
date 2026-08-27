@@ -13,9 +13,9 @@
     <button class="btn wx" loading="{{wxLoading}}" disabled="{{wxLoading || loading}}" bindtap="onWechatLogin">
       {{wxLoading ? '微信登录中…' : '微信一键登录'}}
     </button>
-    <view class="split">测试 / 管理员账号</view>
+    <view class="split">或使用账号密码</view>
     <view class="label">用户名</view>
-    <input class="input" value="{{username}}" placeholder="customer 或 admin" bindinput="onUsername" />
+    <input class="input" value="{{username}}" placeholder="请输入用户名" bindinput="onUsername" />
     <view class="label">密码</view>
     <input class="input" password value="{{password}}" placeholder="请输入密码" bindinput="onPassword" />
     <view wx:if="{{error}}" class="error">{{error}}</view>
@@ -23,10 +23,5 @@
       {{loading ? '登录中…' : '账号登录'}}
     </button>
     <view class="skip" bindtap="onBrowseShop">先去逛橱窗，登录后再下单</view>
-    <view class="hint">
-      <view>普通用户请用微信登录，下次打开会自动记住。</view>
-      <view>测试账号 customer / Customer@123</view>
-      <view>管理员 admin / Admin@123456</view>
-    </view>
   </view>
 </view>

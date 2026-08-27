@@ -64,6 +64,17 @@ async def test_hybrid_answer_mentions_product_price():
 
 
 @pytest.mark.asyncio
+async def test_hybrid_recommend_draft_strips_faq_markers():
+    from app.core.hybrid_rag import hybrid_search_with_answer
+
+    answer, citations, relevance = await hybrid_search_with_answer("给我推荐柱头灯")
+    assert citations
+    assert relevance >= 0.1
+    assert "答：" not in answer
+    assert "问：" not in answer
+
+
+@pytest.mark.asyncio
 async def test_hybrid_durability_uses_short_clerk_draft():
     from app.core.hybrid_rag import hybrid_search_with_answer
 

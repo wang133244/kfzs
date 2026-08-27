@@ -12,7 +12,7 @@ from ..config import settings
 from ..core.intent_router import is_explicit_handoff, is_handoff_affirmative
 from ..core.memory import memory_service
 from ..core.grounding import check_grounding
-from ..core.safety import validate_customer_answer
+from ..core.safety import humanize_customer_text, validate_customer_answer
 from ..core.ws_manager import ws_manager
 from ..db import async_session_factory, get_db
 from ..models import ChatSession, Message, User
@@ -249,6 +249,9 @@ async def chat_ws(websocket: WebSocket, token: str = Query(...)) -> None:
                                 final_response = collected
                                 state["final_response"] = collected
 
+                final_response = humanize_customer_text(
+                    final_response, state.get("product_cards") or []
+                )
                 assistant = Message(
                     session_id=session.id,
                     role="assistant",
